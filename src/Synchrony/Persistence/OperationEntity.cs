@@ -19,7 +19,7 @@ public class OperationEntity
     public int SequenceNumber { get; init; }
 
     [Column("State")]
-    public int State { get; init; }
+    public int State { get; set; }
 
     [Column("CreationTimestamp")]
     public DateTimeOffset CreationTimestamp { get; init; }

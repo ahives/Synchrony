@@ -1,6 +1,6 @@
-using Synchrony.Configuration;
-
 namespace Synchrony;
+
+using Configuration;
 
 public class TransactionOperation
 {

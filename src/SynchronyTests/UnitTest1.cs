@@ -1,7 +1,3 @@
-using Synchrony;
-using Synchrony.Persistence;
-using Synchrony.Testing;
-
 namespace SynchronyTests;
 
 using Synchrony;

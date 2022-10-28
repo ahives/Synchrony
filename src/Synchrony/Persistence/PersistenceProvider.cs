@@ -109,12 +109,23 @@ public class PersistenceProvider :
 
     public IReadOnlyList<OperationEntity> GetAllOperations(Guid transactionId)
     {
-        throw new NotImplementedException();
+        using var db = new TransactionDbContext();
+
+        var operations = (from op in db.Operations
+                where op.TransactionId == transactionId
+                select op)
+            .ToList();
+
+        return operations;
     }
 
     public bool TryGetTransaction(Guid transactionId, out TransactionEntity transaction)
     {
-        throw new NotImplementedException();
+        using var db = new TransactionDbContext();
+
+        transaction = db.Transactions.Find(transactionId);
+
+        return transaction is not null;
     }
 
     bool IsExecutable(OperationState state) =>

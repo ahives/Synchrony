@@ -1,32 +1,54 @@
-# Prerequisites
-*.d
+build_output/*
+artifacts/*
+build_temp/*
+*.suo
+*.user
+packages
+*.dotCover
 
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
+*.ncrunch*
+.vs
 
-# Precompiled Headers
-*.gch
-*.pch
+.fake
 
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
+src/logs/*
 
-# Fortran module files
-*.mod
-*.smod
+bin
+obj
+_ReSharper*
 
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
+*.csproj.user
+*.resharper.user
+*.resharper
+*.ReSharper
+*.cache
+*~
+*.swp
+*.bak
+*.orig
+*.nupkg
+*.nuspec
 
-# Executables
-*.exe
-*.out
-*.app
+NuGet.exe
+packages
+
+# Tests
+TestResult.xml
+submit.xml
+tests/*
+SolutionVersion.cs
+src/SolutionVersion.cs
+tests
+doc/build/*
+*.[lm]df
+
+# osx noise
+.DS_Store
+*.DS_Store
+
+_book
+/node_modules
+.vscode
+**/.idea/
+
+**/tools/

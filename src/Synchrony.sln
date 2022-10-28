@@ -1,0 +1,33 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Synchrony", "Synchrony\Synchrony.csproj", "{F8728D83-F65B-422A-8B6C-2954F02C83FE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Synchrony.Extensions.DependencyInjection", "Synchrony.Extensions.DependencyInjection\Synchrony.Extensions.DependencyInjection.csproj", "{B83D06AA-BAAE-4791-AB6F-7078211E2ACE}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Testing", "Testing", "{1F7C66BA-716D-4C2A-88E8-66CE25A27831}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SynchronyTests", "SynchronyTests\SynchronyTests.csproj", "{ABFD16C9-86AF-483F-9CDC-17B6F42FA723}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F8728D83-F65B-422A-8B6C-2954F02C83FE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F8728D83-F65B-422A-8B6C-2954F02C83FE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F8728D83-F65B-422A-8B6C-2954F02C83FE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F8728D83-F65B-422A-8B6C-2954F02C83FE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B83D06AA-BAAE-4791-AB6F-7078211E2ACE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B83D06AA-BAAE-4791-AB6F-7078211E2ACE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B83D06AA-BAAE-4791-AB6F-7078211E2ACE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B83D06AA-BAAE-4791-AB6F-7078211E2ACE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ABFD16C9-86AF-483F-9CDC-17B6F42FA723}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ABFD16C9-86AF-483F-9CDC-17B6F42FA723}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ABFD16C9-86AF-483F-9CDC-17B6F42FA723}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ABFD16C9-86AF-483F-9CDC-17B6F42FA723}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{ABFD16C9-86AF-483F-9CDC-17B6F42FA723} = {1F7C66BA-716D-4C2A-88E8-66CE25A27831}
+	EndGlobalSection
+EndGlobal

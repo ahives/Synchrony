@@ -6,9 +6,11 @@ public interface ITransaction
 {
     void Execute();
 
-    Transaction AddOperations(IOperationBuilder builder, params IOperationBuilder[] builders);
+    ITransaction AddOperations(IOperationBuilder builder, params IOperationBuilder[] builders);
 
-    Transaction Configure(Action<TransactionConfigurator> configurator);
+    ITransaction Configure(Action<TransactionConfigurator> configurator);
 
-    Transaction Configure();
+    ITransaction Configure();
+
+    Guid GetTransactionId();
 }

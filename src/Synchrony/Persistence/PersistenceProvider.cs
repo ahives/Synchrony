@@ -18,7 +18,7 @@ public class PersistenceProvider :
         OperationEntity? operation = null;
         for (int i = 0; i < operations.Count; i++)
         {
-            if (!IsExecutable((OperationState) operations[i].State))
+            if (!IsOperationExecutable((OperationState) operations[i].State))
                 continue;
             
             operation = operations[i];
@@ -28,7 +28,7 @@ public class PersistenceProvider :
         if (operation is null)
             return 0;
 
-        return operation.SequenceNumber - 1;
+        return operation.SequenceNumber == 0 ? 0 : operation.SequenceNumber - 1;
     }
 
     public bool TrySaveTransaction(Guid transactionId)
@@ -128,7 +128,7 @@ public class PersistenceProvider :
         return transaction is not null;
     }
 
-    bool IsExecutable(OperationState state) =>
+    bool IsOperationExecutable(OperationState state) =>
         state switch
         {
             OperationState.New => true,

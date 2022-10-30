@@ -55,6 +55,7 @@ public class Tests
             {
                 x.TurnOnConsoleLogging();
                 x.Retry();
+                x.Subscribe(Observer.Create<MyObserver2>(), Observer.Create<MyObserver>());
             })
             .AddOperations(op1, op2, op3)
             .Execute();
@@ -120,7 +121,42 @@ public class Tests
     {
         protected override Func<bool> DoWork()
         {
-            return () => false;
+            return () => true;
         }
     }
-}
+
+    class MyObserver :
+        IObserver<TransactionContext>
+    {
+        public void OnCompleted()
+        {
+            Console.WriteLine("MyObserver1 completed");
+        }
+
+        public void OnError(Exception error)
+        {
+        }
+
+        public void OnNext(TransactionContext value)
+        {
+            Console.WriteLine($"Transaction Observer: Transaction {value.TransactionId} is currently in state {value.State}");
+        }
+    }
+
+    class MyObserver2 :
+        IObserver<OperationContext>
+    {
+        public void OnCompleted()
+        {
+            Console.WriteLine("MyObserver2 completed");
+        }
+    
+        public void OnError(Exception error)
+        {
+        }
+    
+        public void OnNext(OperationContext value)
+        {
+            Console.WriteLine($"Operation Observer: Transaction {value.TransactionId}, Operation {value.OperationId} is currently in state {value.State}");
+        }
+    }}

@@ -29,9 +29,12 @@ public sealed class Transaction :
         var config = new TransactionConfig
         {
             ConsoleLoggingOn = impl.ConsoleLoggingOn,
-            TransactionRetry = impl.TransactionRetry
+            TransactionRetry = impl.TransactionRetry,
         };
 
+        impl.TransactionSubscribers.ForEach(x => Subscribe(x));
+        impl.OperationSubscribers.ForEach(x => Subscribe(x));
+        
         _config = config;
 
         return this;
@@ -74,10 +77,12 @@ public sealed class Transaction :
         if (!IsTransactionExecutable(_transactionId))
             return;
 
-        if (!TryDoWork(_transactionId, _operations, _config, out int index))
+        if (!TryDoWork(_transactionId, _operations, _config, out IReadOnlyList<ValidationResult> results, out int index))
             return;
 
         bool compensated = TryDoCompensation(_transactionId, _operations, index, _config);
+        
+        StopNotifying();
     }
 
     public static ITransaction Create()
@@ -94,14 +99,22 @@ public sealed class Transaction :
     class TransactionConfiguratorImpl :
         TransactionConfigurator
     {
+        private readonly List<IObserver<TransactionContext>> _transactionObservers;
+        private readonly List<IObserver<OperationContext>> _operationObservers;
+        
         public bool LoggingOn { get; private set; }
         public bool ConsoleLoggingOn { get; private set; }
         public TransactionRetry TransactionRetry { get; private set; }
+        public List<IObserver<TransactionContext>> TransactionSubscribers => _transactionObservers;
+        public List<IObserver<OperationContext>> OperationSubscribers => _operationObservers;
 
 
         public TransactionConfiguratorImpl()
         {
             TransactionRetry = TransactionRetry.None;
+            
+            _transactionObservers = new List<IObserver<TransactionContext>>();
+            _operationObservers = new List<IObserver<OperationContext>>();
         }
 
         public void TurnOnLogging() => LoggingOn = true;
@@ -109,5 +122,35 @@ public sealed class Transaction :
         public void TurnOnConsoleLogging() => ConsoleLoggingOn = true;
         
         public void Retry(TransactionRetry retry = TransactionRetry.None) => TransactionRetry = retry;
+
+        public void Subscribe(object observer, params object[] observers)
+        {
+            Subscribe(observer);
+
+            for (int i = 0; i < observers.Length; i++)
+            {
+                Subscribe(observers[i]);
+            }
+        }
+
+        public void Subscribe(object observer)
+        {
+            if (observer.GetType().IsAssignableTo(typeof(IObserver<TransactionContext>)))
+            {
+                if (observer is not IObserver<TransactionContext> op)
+                    return;
+                
+                _transactionObservers.Add(op);
+                return;
+            }
+            
+            if (observer.GetType().IsAssignableTo(typeof(IObserver<OperationContext>)))
+            {
+                if (observer is not IObserver<OperationContext> op)
+                    return;
+                
+                _operationObservers.Add(op);
+            }
+        }
     }
 }

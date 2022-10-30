@@ -3,7 +3,8 @@ namespace Synchrony;
 using Configuration;
 using Persistence;
 
-public class SynchronyTransaction
+public abstract class SynchronyTransaction :
+    ObservableTransaction
 {
     private readonly IPersistenceProvider _persistence;
 
@@ -26,17 +27,16 @@ public class SynchronyTransaction
         };
     }
 
-    protected virtual bool TryDoWork(Guid transactionId, IReadOnlyList<TransactionOperation> operations, TransactionConfig config, out int index)
+    protected virtual bool TryDoWork(Guid transactionId, IReadOnlyList<TransactionOperation> operations,
+        TransactionConfig config, out IReadOnlyList<ValidationResult> results, out int index)
     {
         bool operationFailed = false;
         int start = _persistence.GetStartOperation(transactionId);
 
         index = -1;
-
-        ThrowIfUpdateFailed(_persistence.TryUpdateTransaction, transactionId, TransactionState.Pending);
         
         var persistedOperations = _persistence.GetAllOperations(transactionId);
-        var results = new List<ValidationResult>();
+        var validationResults = new List<ValidationResult>();
 
         for (int i = start; i < operations.Count; i++)
         {
@@ -45,34 +45,37 @@ public class SynchronyTransaction
 
             if (!operations[i].VerifyIsExecutable(transactionId, persistedOperations, out ValidationResult result))
             {
-                results.Add(result);
+                validationResults.Add(result);
                 continue;
             }
             
             // TODO: if the current state is completed skip to the next operation
             
-            ThrowIfUpdateFailed(_persistence.TryUpdateOperationState, transactionId, OperationState.Pending);
+            ThrowIfUpdateFailed(_persistence.TryUpdateOperationState, operations[i].OperationId, transactionId, OperationState.Pending);
 
             if (operations[i].Work.Invoke())
             {
-                ThrowIfUpdateFailed(_persistence.TryUpdateOperationState, transactionId, OperationState.Completed);
+                ThrowIfUpdateFailed(_persistence.TryUpdateOperationState, operations[i].OperationId, transactionId, OperationState.Completed);
                 continue;
             }
 
-            ThrowIfUpdateFailed(_persistence.TryUpdateOperationState, transactionId, OperationState.Failed);
+            ThrowIfUpdateFailed(_persistence.TryUpdateOperationState, operations[i].OperationId, transactionId, OperationState.Failed);
 
             operationFailed = true;
             index = i;
             break;
         }
 
-        if (operationFailed)
-            ThrowIfUpdateFailed(_persistence.TryUpdateTransaction, transactionId, TransactionState.Failed);
+        results = validationResults;
+
+        ThrowIfUpdateFailed(_persistence.TryUpdateTransaction, transactionId,
+            operationFailed ? TransactionState.Failed : TransactionState.Completed);
 
         return operationFailed;
     }
 
-    protected virtual bool TryDoCompensation(Guid transactionId, IReadOnlyList<TransactionOperation> operations, int index, TransactionConfig config)
+    protected virtual bool TryDoCompensation(Guid transactionId, IReadOnlyList<TransactionOperation> operations,
+        int index, TransactionConfig config)
     {
         ThrowIfUpdateFailed(_persistence.TryUpdateTransaction, transactionId, TransactionState.Failed);
 
@@ -83,7 +86,8 @@ public class SynchronyTransaction
 
             operations[i].Compensation.Invoke();
 
-            ThrowIfUpdateFailed(_persistence.TryUpdateOperationState, operations[i].OperationId, OperationState.Compensated);
+            ThrowIfUpdateFailed(_persistence.TryUpdateOperationState, operations[i].OperationId,
+                operations[i].TransactionId, OperationState.Compensated);
         }
 
         ThrowIfUpdateFailed(_persistence.TryUpdateTransaction, transactionId, TransactionState.Compensated);
@@ -95,43 +99,47 @@ public class SynchronyTransaction
     {
         if (save is null)
             throw new ArgumentNullException();
-        
-        if (save.Invoke(transactionId))
-            return;
 
-        throw new TransactionPersistenceException();
+        if (!save.Invoke(transactionId))
+            throw new TransactionPersistenceException();
+
+        NotifyTransactionState(new() {TransactionId = transactionId, State = TransactionState.New});
     }
 
     protected virtual void ThrowIfSaveFailed(Func<TransactionOperation, bool> save, TransactionOperation operation)
     {
         if (save is null)
             throw new ArgumentNullException();
-        
-        if (save.Invoke(operation))
-            return;
 
-        throw new TransactionPersistenceException();
+        if (!save.Invoke(operation))
+            throw new TransactionPersistenceException();
+
+        NotifyOperationState(new()
+        {
+            TransactionId = operation.TransactionId, OperationId = operation.OperationId, State = OperationState.New
+        });
     }
 
     protected virtual void ThrowIfUpdateFailed(Func<Guid, TransactionState, bool> update, Guid transactionId, TransactionState state)
     {
         if (update is null)
             throw new ArgumentNullException();
-        
-        if (update.Invoke(transactionId, state))
-            return;
 
-        throw new TransactionPersistenceException();
+        if (!update.Invoke(transactionId, state))
+            throw new TransactionPersistenceException();
+
+        NotifyTransactionState(new() {TransactionId = transactionId, State = state});
     }
 
-    protected virtual void ThrowIfUpdateFailed(Func<Guid, OperationState, bool> update, Guid transactionId, OperationState state)
+    protected virtual void ThrowIfUpdateFailed(Func<Guid, OperationState, bool> update, Guid operationId,
+        Guid transactionId, OperationState state)
     {
         if (update is null)
             throw new ArgumentNullException();
-        
-        if (update.Invoke(transactionId, state))
-            return;
 
-        throw new TransactionPersistenceException();
+        if (!update.Invoke(transactionId, state))
+            throw new TransactionPersistenceException();
+
+        NotifyOperationState(new() {OperationId = operationId, TransactionId = transactionId, State = state});
     }
 }

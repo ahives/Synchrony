@@ -1,13 +1,11 @@
-using Synchrony;
-using Synchrony.Persistence;
-
-namespace Atomicity.Extensions.DependencyInjection;
+namespace Synchrony.Extensions.DependencyInjection;
 
 using Microsoft.Extensions.DependencyInjection;
+using Persistence;
 
-public static class AtomicityExtensions
+public static class SynchronyExtensions
 {
-    public static IServiceCollection AddAtomicity(this IServiceCollection services)
+    public static IServiceCollection AddSynchrony(this IServiceCollection services)
     {
         services.AddSingleton<IPersistenceProvider, PersistenceProvider>();
         services.AddTransient<ITransaction, Transaction>();

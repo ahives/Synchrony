@@ -1,6 +1,6 @@
 namespace Synchrony.Persistence;
 
-public static class Persistence
+public static class Database
 {
     private static IPersistenceProvider _provider;
     private static readonly object _obj = new();

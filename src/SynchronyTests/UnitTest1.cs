@@ -31,7 +31,7 @@ public class Tests
         var op2 = Operation.Create<Operation2>();
         var op3 = Operation.Create<Operation3>();
 
-        new Transaction(TestPersistence.Provider)
+        new Transaction(TestDatabase.Provider)
             .Configure(x =>
             {
                 x.TurnOnConsoleLogging();
@@ -50,7 +50,7 @@ public class Tests
         var op2 = Operation.Create<Operation2>();
         var op3 = Operation.Create<Operation3>();
 
-        Transaction.Create(TestPersistence.Provider)
+        Transaction.Create(TestDatabase.Provider)
             .Configure(x =>
             {
                 x.TurnOnConsoleLogging();

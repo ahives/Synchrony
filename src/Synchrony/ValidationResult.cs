@@ -12,15 +12,3 @@ public record ValidationResult
 
     public Disposition Disposition { get; init; }
 }
-
-public enum ValidationType
-{
-    Transaction,
-    Operation
-}
-
-public enum Disposition
-{
-    Failed,
-    Missing
-}

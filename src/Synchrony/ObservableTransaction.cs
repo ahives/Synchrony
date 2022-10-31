@@ -69,7 +69,7 @@ public abstract class ObservableTransaction :
         }
     }
 
-    protected virtual void StopNotifying()
+    protected virtual void StopSendingNotifications()
     {
         foreach (var observer in _transactionObservers)
             observer.OnCompleted();

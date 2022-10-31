@@ -82,18 +82,12 @@ public sealed class Transaction :
 
         bool compensated = TryDoCompensation(_transactionId, _operations, index, _config);
         
-        StopNotifying();
+        StopSendingNotifications();
     }
 
-    public static ITransaction Create()
-    {
-        return new Transaction(new PersistenceProvider());
-    }
+    public static ITransaction Create() => new Transaction(Database.Provider);
 
-    public static ITransaction Create(IPersistenceProvider provider)
-    {
-        return new Transaction(provider);
-    }
+    public static ITransaction Create(IPersistenceProvider provider) => new Transaction(provider);
 
 
     class TransactionConfiguratorImpl :
@@ -128,12 +122,10 @@ public sealed class Transaction :
             Subscribe(observer);
 
             for (int i = 0; i < observers.Length; i++)
-            {
                 Subscribe(observers[i]);
-            }
         }
 
-        public void Subscribe(object observer)
+        void Subscribe(object observer)
         {
             if (observer.GetType().IsAssignableTo(typeof(IObserver<TransactionContext>)))
             {

@@ -2,7 +2,7 @@ namespace Synchrony.Testing;
 
 using Persistence;
 
-public static class TestPersistence
+public static class TestDatabase
 {
     private static IPersistenceProvider _provider;
     private static readonly object obj = new();

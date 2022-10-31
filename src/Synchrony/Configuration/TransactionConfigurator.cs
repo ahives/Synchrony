@@ -9,6 +9,4 @@ public interface TransactionConfigurator
     void Retry(TransactionRetry retry = TransactionRetry.None);
 
     void Subscribe(object observer, params object[] observers);
-
-    void Subscribe(object observer);
 }

@@ -30,7 +30,7 @@ public abstract class SynchronyTransaction :
     protected virtual bool TryDoWork(Guid transactionId, IReadOnlyList<TransactionOperation> operations,
         TransactionConfig config, out IReadOnlyList<ValidationResult> results, out int index)
     {
-        bool operationFailed = false;
+        bool failed = false;
         int start = _persistence.GetStartOperation(transactionId);
 
         index = -1;
@@ -61,7 +61,7 @@ public abstract class SynchronyTransaction :
 
             ThrowIfUpdateFailed(_persistence.TryUpdateOperationState, operations[i].OperationId, transactionId, OperationState.Failed);
 
-            operationFailed = true;
+            failed = true;
             index = i;
             break;
         }
@@ -69,9 +69,9 @@ public abstract class SynchronyTransaction :
         results = validationResults;
 
         ThrowIfUpdateFailed(_persistence.TryUpdateTransaction, transactionId,
-            operationFailed ? TransactionState.Failed : TransactionState.Completed);
+            failed ? TransactionState.Failed : TransactionState.Completed);
 
-        return operationFailed;
+        return failed;
     }
 
     protected virtual bool TryDoCompensation(Guid transactionId, IReadOnlyList<TransactionOperation> operations,

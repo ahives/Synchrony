@@ -1,5 +1,7 @@
 namespace Synchrony;
 
+using Extensions;
+
 public abstract class ObservableTransaction :
     IObservable<TransactionContext>,
     IObservable<OperationContext>
@@ -29,29 +31,26 @@ public abstract class ObservableTransaction :
         return new UnSubscriber<OperationContext>(_operationObservers, observer);
     }
 
-    protected virtual void NotifyTransactionState(TransactionContext context)
-    {
-        foreach (var observer in _transactionObservers)
-        {
-            switch (context.State)
+    protected virtual void NotifyTransactionState(TransactionContext context) =>
+        _transactionObservers.ForEach(0, x =>
             {
-                case TransactionState.New:
-                case TransactionState.Pending:
-                case TransactionState.Completed:
-                case TransactionState.Compensated:
-                    observer.OnNext(context);
-                    break;
-                case TransactionState.Failed:
-                default:
-                    observer.OnError(new TransactionPersistenceException());
-                    break;
-            }
-        }
-    }
+                switch (context.State)
+                {
+                    case TransactionState.New:
+                    case TransactionState.Pending:
+                    case TransactionState.Completed:
+                    case TransactionState.Compensated:
+                        x.OnNext(context);
+                        break;
+                    case TransactionState.Failed:
+                    default:
+                        x.OnError(new TransactionPersistenceException());
+                        break;
+                }
+            });
 
-    protected virtual void NotifyOperationState(OperationContext context)
-    {
-        foreach (var observer in _operationObservers)
+    protected virtual void NotifyOperationState(OperationContext context) =>
+        _operationObservers.ForEach(0, x =>
         {
             switch (context.State)
             {
@@ -59,15 +58,14 @@ public abstract class ObservableTransaction :
                 case OperationState.Pending:
                 case OperationState.Completed:
                 case OperationState.Compensated:
-                    observer.OnNext(context);
+                    x.OnNext(context);
                     break;
                 case OperationState.Failed:
                 default:
-                    observer.OnError(new TransactionPersistenceException());
+                    x.OnError(new TransactionPersistenceException());
                     break;
             }
-        }
-    }
+        });
 
     protected virtual void StopSendingNotifications()
     {

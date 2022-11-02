@@ -77,8 +77,11 @@ public sealed class Transaction :
         if (!IsTransactionExecutable(_transactionId))
             return;
 
-        if (!TryDoWork(_transactionId, _operations, _config, out IReadOnlyList<ValidationResult> results, out int index))
+        if (TryDoWork(_transactionId, _operations, _config, out IReadOnlyList<ValidationResult> results, out int index))
+        {
+            StopSendingNotifications();
             return;
+        }
 
         bool compensated = TryDoCompensation(_transactionId, _operations, index, _config);
         

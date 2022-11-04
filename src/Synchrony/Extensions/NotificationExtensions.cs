@@ -3,7 +3,7 @@ namespace Synchrony.Extensions;
 public static class NotificationExtensions
 {
     public static void SendToObservers<TContext>(this List<IObserver<TContext>> observers, TContext context) =>
-        observers.ForEach(0, x =>
+        observers.ForEach(x =>
         {
             switch (context)
             {

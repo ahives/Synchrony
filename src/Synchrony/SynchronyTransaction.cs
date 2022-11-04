@@ -35,7 +35,7 @@ public abstract class SynchronyTransaction :
         var persistedOperations = _persistence.GetAllOperations(transactionId);
         var validationResults = new List<ValidationResult>();
 
-        index =
+        (bool succeeded, index) =
             operations.ForEach(start, (x, _) =>
             {
                 if (config.ConsoleLoggingOn)
@@ -66,8 +66,6 @@ public abstract class SynchronyTransaction :
             });
 
         results = validationResults;
-        
-        bool succeeded = index >= 0;
 
         _persistence
             .TryUpdateTransaction()

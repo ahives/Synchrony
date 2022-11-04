@@ -13,17 +13,19 @@ internal static class ForEachExtensions
             action(list[i]);
     }
 
-    internal static int ForEach<T>(this List<T> list, int start, Func<T, int, bool> function)
+    internal static (bool success, int index) ForEach<T>(this List<T> list, int start, Func<T, int, bool> function)
     {
         Guard.IsNotNull(list);
         Guard.IsNotNull(function);
 
+        bool succeed = true;
         for (int i = start; i < list.Count; i++)
         {
-            if (!function(list[i], i))
-                return i;
+            succeed &= function(list[i], i);
+            if (!succeed)
+                return (succeed, i);
         }
 
-        return -1;
+        return (succeed, -1);
     }
 }

@@ -1,6 +1,6 @@
 using Synchrony.Persistence;
 
-namespace Synchrony;
+namespace Synchrony.Extensions;
 
 public static class TransactionExtensions
 {
@@ -18,6 +18,7 @@ public static class TransactionExtensions
                 Disposition = Disposition.Missing,
                 Message = ""
             };
+            
             return true;
         }
         

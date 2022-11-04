@@ -56,7 +56,7 @@ public class Tests
             {
                 x.TurnOnConsoleLogging();
                 x.Retry();
-                x.Subscribe(Observer.Create<MyObserver2>(), Observer.Create<MyObserver>());
+                // x.Subscribe(Observer.Create<MyObserver2>(), Observer.Create<MyObserver>());
             })
             .AddOperations(op1, op2, op3)
             .Execute();

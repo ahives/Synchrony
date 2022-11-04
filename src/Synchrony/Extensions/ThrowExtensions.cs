@@ -2,7 +2,7 @@ namespace Synchrony.Extensions;
 
 using CommunityToolkit.Diagnostics;
 
-public static class ThrowExtensions
+internal static class ThrowExtensions
 {
     internal static void ThrowIfFailed(this Func<TransactionOperation, bool> function, TransactionOperation operation,
         OperationState state, List<IObserver<OperationContext>> observers) =>

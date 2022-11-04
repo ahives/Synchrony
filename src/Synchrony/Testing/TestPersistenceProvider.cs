@@ -11,24 +11,19 @@ public class TestPersistenceProvider :
         return 0;
     }
 
-    public bool TrySaveTransaction(Guid transactionId)
+    public Func<Guid, TransactionState, bool> TryUpdateTransaction()
     {
-        return true;
+        return (_, _) => true;
     }
 
-    public bool TryUpdateTransaction(Guid transactionId, TransactionState state)
+    public Func<Guid, OperationState, bool> TryUpdateOperationState()
     {
-        return true;
+        return (_, _) => true;
     }
 
-    public bool TrySaveOperation(TransactionOperation operation)
+    public Func<TransactionOperation, bool> TrySaveOperation()
     {
-        return true;
-    }
-
-    public bool TryUpdateOperationState(Guid operationId, OperationState state)
-    {
-        return true;
+        return _ => true;
     }
 
     public IReadOnlyList<OperationEntity> GetAllOperations(Guid transactionId)
@@ -61,5 +56,10 @@ public class TestPersistenceProvider :
             Id = NewId.NextGuid(), State = (int) TransactionState.Pending, CreationTimestamp = DateTimeOffset.UtcNow
         };
         return true;
+    }
+
+    public Func<Guid, bool> TrySaveTransaction()
+    {
+        return _ => true;
     }
 }

@@ -1,6 +1,5 @@
 namespace Synchrony;
 
-using CommunityToolkit.Diagnostics;
 using Extensions;
 using Configuration;
 using Persistence;
@@ -36,37 +35,43 @@ public abstract class SynchronyTransaction :
         var persistedOperations = _persistence.GetAllOperations(transactionId);
         var validationResults = new List<ValidationResult>();
 
-        index = operations.ForEach(start, (x, _) =>
-        {
-            if (config.ConsoleLoggingOn)
-                Console.WriteLine($"Executing operation {x.SequenceNumber}");
-
-            bool success = false;
-            if (!x.VerifyIsExecutable(transactionId, persistedOperations, out ValidationResult result))
+        index =
+            operations.ForEach(start, (x, _) =>
             {
-                validationResults.Add(result);
-            }
-            else
-            {
-                // TODO: if the current state is completed skip to the next operation
+                if (config.ConsoleLoggingOn)
+                    Console.WriteLine($"Executing operation {x.SequenceNumber}");
 
-                ThrowIfUpdateFailed(_persistence.TryUpdateOperationState, x.OperationId, transactionId, OperationState.Pending);
+                bool success = false;
+                if (!x.VerifyIsExecutable(transactionId, persistedOperations, out ValidationResult result))
+                {
+                    validationResults.Add(result);
+                }
+                else
+                {
+                    // TODO: if the current state is completed skip to the next operation
 
-                success = x.Work.Invoke();
+                    _persistence
+                        .TryUpdateOperationState()
+                        .ThrowIfFailed(x.OperationId, x.TransactionId, OperationState.Pending, _operationObservers);
 
-                ThrowIfUpdateFailed(_persistence.TryUpdateOperationState, x.OperationId, transactionId,
-                    success ? OperationState.Completed : OperationState.Failed);
-            }
+                    success = x.Work.Invoke();
 
-            return success;
-        });
+                    _persistence
+                        .TryUpdateOperationState()
+                        .ThrowIfFailed(x.OperationId, transactionId,
+                            success ? OperationState.Completed : OperationState.Failed, _operationObservers);
+                }
+
+                return success;
+            });
 
         results = validationResults;
         
         bool succeeded = index >= 0;
 
-        ThrowIfUpdateFailed(_persistence.TryUpdateTransaction, transactionId,
-            succeeded ? TransactionState.Completed : TransactionState.Failed);
+        _persistence
+            .TryUpdateTransaction()
+            .ThrowIfFailed(transactionId, succeeded ? TransactionState.Completed : TransactionState.Failed, _transactionObservers);
 
         return succeeded;
     }
@@ -74,7 +79,9 @@ public abstract class SynchronyTransaction :
     protected virtual bool TryDoCompensation(Guid transactionId, List<TransactionOperation> operations,
         int index, TransactionConfig config)
     {
-        ThrowIfUpdateFailed(_persistence.TryUpdateTransaction, transactionId, TransactionState.Failed);
+        _persistence
+            .TryUpdateTransaction()
+            .ThrowIfFailed(transactionId, TransactionState.Failed, _transactionObservers);
 
         operations.ForEach(index, x =>
         {
@@ -83,56 +90,15 @@ public abstract class SynchronyTransaction :
 
             x.Compensation.Invoke();
 
-            ThrowIfUpdateFailed(_persistence.TryUpdateOperationState, x.OperationId,
-                x.TransactionId, OperationState.Compensated);
+            _persistence
+                .TryUpdateOperationState()
+                .ThrowIfFailed(x.OperationId, x.TransactionId, OperationState.Compensated, _operationObservers);
         });
 
-        ThrowIfUpdateFailed(_persistence.TryUpdateTransaction, transactionId, TransactionState.Compensated);
+        _persistence
+            .TryUpdateTransaction()
+            .ThrowIfFailed(transactionId, TransactionState.Compensated, _transactionObservers);
 
         return true;
-    }
-
-    protected virtual void ThrowIfSaveFailed(Func<Guid, bool> save, Guid transactionId)
-    {
-        Guard.IsNotNull(save);
-
-        if (!save.Invoke(transactionId))
-            throw new TransactionPersistenceException();
-
-        NotifyTransactionState(new() {TransactionId = transactionId, State = TransactionState.New});
-    }
-
-    protected virtual void ThrowIfSaveFailed(Func<TransactionOperation, bool> save, TransactionOperation operation)
-    {
-        Guard.IsNotNull(save);
-
-        if (!save.Invoke(operation))
-            throw new TransactionPersistenceException();
-
-        NotifyOperationState(new()
-        {
-            TransactionId = operation.TransactionId, OperationId = operation.OperationId, State = OperationState.New
-        });
-    }
-
-    protected virtual void ThrowIfUpdateFailed(Func<Guid, TransactionState, bool> update, Guid transactionId, TransactionState state)
-    {
-        Guard.IsNotNull(update);
-
-        if (!update.Invoke(transactionId, state))
-            throw new TransactionPersistenceException();
-
-        NotifyTransactionState(new() {TransactionId = transactionId, State = state});
-    }
-
-    protected virtual void ThrowIfUpdateFailed(Func<Guid, OperationState, bool> update, Guid operationId,
-        Guid transactionId, OperationState state)
-    {
-        Guard.IsNotNull(update);
-
-        if (!update.Invoke(transactionId, state))
-            throw new TransactionPersistenceException();
-
-        NotifyOperationState(new() {OperationId = operationId, TransactionId = transactionId, State = state});
     }
 }

@@ -1,13 +1,11 @@
 namespace Synchrony;
 
-using Extensions;
-
 public abstract class ObservableTransaction :
     IObservable<TransactionContext>,
     IObservable<OperationContext>
 {
-    private readonly List<IObserver<TransactionContext>> _transactionObservers;
-    private readonly List<IObserver<OperationContext>> _operationObservers;
+    protected readonly List<IObserver<TransactionContext>> _transactionObservers;
+    protected readonly List<IObserver<OperationContext>> _operationObservers;
 
     protected ObservableTransaction()
     {
@@ -30,42 +28,6 @@ public abstract class ObservableTransaction :
 
         return new UnSubscriber<OperationContext>(_operationObservers, observer);
     }
-
-    protected virtual void NotifyTransactionState(TransactionContext context) =>
-        _transactionObservers.ForEach(0, x =>
-            {
-                switch (context.State)
-                {
-                    case TransactionState.New:
-                    case TransactionState.Pending:
-                    case TransactionState.Completed:
-                    case TransactionState.Compensated:
-                        x.OnNext(context);
-                        break;
-                    case TransactionState.Failed:
-                    default:
-                        x.OnError(new TransactionPersistenceException());
-                        break;
-                }
-            });
-
-    protected virtual void NotifyOperationState(OperationContext context) =>
-        _operationObservers.ForEach(0, x =>
-        {
-            switch (context.State)
-            {
-                case OperationState.New:
-                case OperationState.Pending:
-                case OperationState.Completed:
-                case OperationState.Compensated:
-                    x.OnNext(context);
-                    break;
-                case OperationState.Failed:
-                default:
-                    x.OnError(new TransactionPersistenceException());
-                    break;
-            }
-        });
 
     protected virtual void StopSendingNotifications()
     {

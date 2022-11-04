@@ -31,81 +31,85 @@ public class PersistenceProvider :
         return operation.SequenceNumber == 0 ? 0 : operation.SequenceNumber - 1;
     }
 
-    public bool TrySaveTransaction(Guid transactionId)
-    {
-        using var db = new TransactionDbContext();
-
-        var entity = new TransactionEntity
+    public Func<Guid, bool> TrySaveTransaction() =>
+        transactionId =>
         {
-            Id = transactionId,
-            State = (int) TransactionState.New,
-            CreationTimestamp = DateTimeOffset.UtcNow
+            using var db = new TransactionDbContext();
+
+            var entity = new TransactionEntity
+            {
+                Id = transactionId,
+                State = (int) TransactionState.New,
+                CreationTimestamp = DateTimeOffset.UtcNow
+            };
+
+            db.Transactions.Add(entity);
+            db.SaveChanges();
+
+            return db.Entry(entity).State == EntityState.Added;
         };
-        
-        db.Transactions.Add(entity);
-        db.SaveChanges();
-        
-        return db.Entry(entity).State == EntityState.Added;
-    }
 
-    public bool TryUpdateTransaction(Guid transactionId, TransactionState state)
-    {
-        using var db = new TransactionDbContext();
-
-        var transaction = (from trans in db.Transactions
-                where trans.Id == transactionId
-                select trans)
-            .FirstOrDefault();
-
-        if (transaction == null)
-            return false;
-
-        transaction.State = (int) state;
-
-        db.Transactions.Update(transaction);
-        db.SaveChanges();
-
-        return db.Entry(transaction).State == EntityState.Modified;
-    }
-
-    public bool TrySaveOperation(TransactionOperation operation)
-    {
-        using var db = new TransactionDbContext();
-
-        var entity = new OperationEntity
+    public Func<Guid, TransactionState, bool> TryUpdateTransaction() =>
+        (transactionId, state) =>
         {
-            Id = operation.OperationId,
-            TransactionId = operation.TransactionId,
-            Name = operation.Name,
-            State = (int) TransactionState.New,
-            CreationTimestamp = DateTimeOffset.UtcNow
+            using var db = new TransactionDbContext();
+
+            var transaction = (from trans in db.Transactions
+                    where trans.Id == transactionId
+                    select trans)
+                .FirstOrDefault();
+
+            if (transaction == null)
+                return false;
+
+            transaction.State = (int) state;
+
+            db.Transactions.Update(transaction);
+            db.SaveChanges();
+
+            return db.Entry(transaction).State == EntityState.Modified;
         };
-        
-        db.Operations.Add(entity);
-        db.SaveChanges();
 
-        return db.Entry(entity).State == EntityState.Added;
-    }
+    public Func<Guid, OperationState, bool> TryUpdateOperationState() =>
+        (operationId, state) =>
+        {
+            using var db = new TransactionDbContext();
 
-    public bool TryUpdateOperationState(Guid operationId, OperationState state)
-    {
-        using var db = new TransactionDbContext();
+            var operation = (from op in db.Operations
+                    where op.Id == operationId
+                    select op)
+                .FirstOrDefault();
 
-        var operation = (from op in db.Operations
-                where op.Id == operationId
-                select op)
-            .FirstOrDefault();
+            if (operation == null)
+                return false;
 
-        if (operation == null)
-            return false;
+            operation.State = (int) state;
 
-        operation.State = (int) state;
+            db.Operations.Update(operation);
+            db.SaveChanges();
 
-        db.Operations.Update(operation);
-        db.SaveChanges();
-        
-        return db.Entry(operation).State == EntityState.Modified;
-    }
+            return db.Entry(operation).State == EntityState.Modified;
+        };
+
+    public Func<TransactionOperation, bool> TrySaveOperation() =>
+        op =>
+        {
+            using var db = new TransactionDbContext();
+
+            var entity = new OperationEntity
+            {
+                Id = op.OperationId,
+                TransactionId = op.TransactionId,
+                Name = op.Name,
+                State = (int) TransactionState.New,
+                CreationTimestamp = DateTimeOffset.UtcNow
+            };
+
+            db.Operations.Add(entity);
+            db.SaveChanges();
+
+            return db.Entry(entity).State == EntityState.Added;
+        };
 
     public IReadOnlyList<OperationEntity> GetAllOperations(Guid transactionId)
     {

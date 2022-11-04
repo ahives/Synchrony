@@ -3,6 +3,7 @@ namespace Synchrony;
 using MassTransit;
 using Configuration;
 using Persistence;
+using Extensions;
 
 public sealed class Transaction :
     SynchronyTransaction,
@@ -52,21 +53,29 @@ public sealed class Transaction :
 
     public ITransaction AddOperations(IOperationBuilder builder, params IOperationBuilder[] builders)
     {
-        ThrowIfSaveFailed(_persistence.TrySaveTransaction, GetTransactionId());
+        _persistence
+            .TrySaveTransaction()
+            .ThrowIfFailed(GetTransactionId(), TransactionState.New, _transactionObservers);
 
         var op = builder.Create(_transactionId, _operations.Count + 1);
         _operations.Add(op);
 
-        ThrowIfSaveFailed(_persistence.TrySaveOperation, op);
+        _persistence
+            .TrySaveOperation()
+            .ThrowIfFailed(op, OperationState.New, _operationObservers);
 
-        ThrowIfUpdateFailed(_persistence.TryUpdateTransaction, _transactionId, TransactionState.Pending);
+        _persistence
+            .TryUpdateTransaction()
+            .ThrowIfFailed(_transactionId, TransactionState.Pending, _transactionObservers);
 
         for (int i = 0; i < builders.Length; i++)
         {
             var operation = builders[i].Create(_transactionId, _operations.Count + 1);
             _operations.Add(operation);
-            
-            ThrowIfSaveFailed(_persistence.TrySaveOperation, operation);
+
+            _persistence
+                .TrySaveOperation()
+                .ThrowIfFailed(operation, OperationState.New, _operationObservers);
         }
 
         return this;

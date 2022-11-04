@@ -4,13 +4,13 @@ public interface IPersistenceProvider
 {
     int GetStartOperation(Guid transactionId);
 
-    bool TrySaveTransaction(Guid transactionId);
+    Func<Guid, TransactionState, bool> TryUpdateTransaction();
 
-    bool TryUpdateTransaction(Guid transactionId, TransactionState state);
+    Func<Guid, OperationState, bool> TryUpdateOperationState();
     
-    bool TrySaveOperation(TransactionOperation operation);
+    Func<TransactionOperation, bool> TrySaveOperation();
 
-    bool TryUpdateOperationState(Guid operationId, OperationState state);
+    Func<Guid, bool> TrySaveTransaction();
 
     IReadOnlyList<OperationEntity> GetAllOperations(Guid transactionId);
     

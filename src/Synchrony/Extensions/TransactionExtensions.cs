@@ -1,6 +1,6 @@
-using Synchrony.Persistence;
-
 namespace Synchrony.Extensions;
+
+using Persistence;
 
 public static class TransactionExtensions
 {

@@ -92,15 +92,15 @@ public class PersistenceProvider :
         };
 
     public Func<TransactionOperation, bool> TrySaveOperation() =>
-        op =>
+        operation =>
         {
             using var db = new TransactionDbContext();
 
             var entity = new OperationEntity
             {
-                Id = op.OperationId,
-                TransactionId = op.TransactionId,
-                Name = op.Name,
+                Id = operation.OperationId,
+                TransactionId = operation.TransactionId,
+                Name = operation.Name,
                 State = (int) TransactionState.New,
                 CreationTimestamp = DateTimeOffset.UtcNow
             };

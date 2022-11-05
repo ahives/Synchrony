@@ -6,20 +6,22 @@ using Persistence;
 using Extensions;
 
 public sealed class Transaction :
-    SynchronyTransaction,
+    AtomicTransaction,
     ITransaction
 {
     private TransactionConfig _config;
     private readonly IPersistenceProvider _persistence;
-    private readonly List<TransactionOperation> _operations;
+    private readonly IReadOnlyList<OperationEntity> _operationsInDatabase;
+    private readonly List<IOperationBuilder> _operationsInSession;
     private readonly Guid _transactionId;
 
-    public Transaction(IPersistenceProvider persistence) : base(persistence)
+    private Transaction(IPersistenceProvider persistence, Guid transactionId) : base(persistence)
     {
         _config = SynchronyConfigCache.Default;
         _persistence = persistence;
-        _operations = new List<TransactionOperation>();
-        _transactionId = NewId.NextGuid();
+        _operationsInDatabase = persistence.GetAllOperations(transactionId);
+        _operationsInSession = new List<IOperationBuilder>();
+        _transactionId = transactionId;
     }
 
     public ITransaction Configure(Action<TransactionConfigurator> configurator)
@@ -38,6 +40,10 @@ public sealed class Transaction :
         
         _config = config;
 
+        _persistence
+            .TrySaveTransaction()
+            .ThrowIfFailed(GetTransactionId(), TransactionState.New, _transactionObservers);
+
         return this;
     }
 
@@ -53,30 +59,7 @@ public sealed class Transaction :
 
     public ITransaction AddOperations(IOperationBuilder builder, params IOperationBuilder[] builders)
     {
-        _persistence
-            .TrySaveTransaction()
-            .ThrowIfFailed(GetTransactionId(), TransactionState.New, _transactionObservers);
-
-        var op = builder.Create(_transactionId, _operations.Count + 1);
-        _operations.Add(op);
-
-        _persistence
-            .TrySaveOperation()
-            .ThrowIfFailed(op, OperationState.New, _operationObservers);
-
-        _persistence
-            .TryUpdateTransaction()
-            .ThrowIfFailed(_transactionId, TransactionState.Pending, _transactionObservers);
-
-        for (int i = 0; i < builders.Length; i++)
-        {
-            var operation = builders[i].Create(_transactionId, _operations.Count + 1);
-            _operations.Add(operation);
-
-            _persistence
-                .TrySaveOperation()
-                .ThrowIfFailed(operation, OperationState.New, _operationObservers);
-        }
+        _operationsInSession.AddRange(builders.Prepend(builder).ToList());
 
         return this;
     }
@@ -86,20 +69,44 @@ public sealed class Transaction :
         if (!IsTransactionExecutable(_transactionId))
             return;
 
-        if (TryDoWork(_transactionId, _operations, _config, out IReadOnlyList<ValidationResult> results, out int index))
+        _persistence
+            .TryUpdateTransaction()
+            .ThrowIfFailed(_transactionId, TransactionState.Pending, _transactionObservers);
+
+        var operations = GetOperations();
+        (bool workSucceeded, IReadOnlyList<ValidationResult> _, int index) = TryDoWork(operations, _transactionId, _config);
+
+        if (workSucceeded)
         {
             StopSendingNotifications();
             return;
         }
 
-        bool compensated = TryDoCompensation(_transactionId, _operations, index, _config);
+        bool compensated = TryDoCompensation(operations, _transactionId, index, _config);
         
         StopSendingNotifications();
     }
 
-    public static ITransaction Create() => new Transaction(Database.Provider);
+    public static ITransaction Create() => Create(Database.Provider);
 
-    public static ITransaction Create(IPersistenceProvider provider) => new Transaction(provider);
+    public static ITransaction Create(IPersistenceProvider provider)
+    {
+        var transactionId = NewId.NextGuid();
+        
+        return new Transaction(provider, transactionId);
+    }
+
+    List<TransactionOperation> GetOperations()
+    {
+        return _operationsInSession
+            .ForEach(_operationsInDatabase, _operationsInDatabase.Count, _transactionId, x =>
+            {
+                _persistence
+                    .TrySaveOperation()
+                    .ThrowIfFailed(x, OperationState.New, _operationObservers);
+            })
+            .ToList();
+    }
 
 
     class TransactionConfiguratorImpl :

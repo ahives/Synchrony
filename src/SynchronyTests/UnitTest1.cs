@@ -24,24 +24,24 @@ public class Tests
     {
     }
 
-    [Test]
-    public void Test1()
-    {
-        var op1 = Operation.Create<Operation1>();
-        var op2 = Operation.Create<Operation2>();
-        var op3 = Operation.Create<Operation3>();
-
-        new Transaction(TestDatabase.Provider)
-            .Configure(x =>
-            {
-                x.TurnOnConsoleLogging();
-                x.Retry();
-            })
-            .AddOperations(op1, op2, op3)
-            .Execute();
-        
-        Assert.Pass();
-    }
+    // [Test]
+    // public void Test1()
+    // {
+    //     var op1 = Operation.Create<Operation1>();
+    //     var op2 = Operation.Create<Operation2>();
+    //     var op3 = Operation.Create<Operation3>();
+    //
+    //     new Transaction(TestDatabase.Provider)
+    //         .Configure(x =>
+    //         {
+    //             x.TurnOnConsoleLogging();
+    //             x.Retry();
+    //         })
+    //         .AddOperations(op1, op2, op3)
+    //         .Execute();
+    //     
+    //     Assert.Pass();
+    // }
 
     [Test]
     public void Test2()
@@ -54,9 +54,9 @@ public class Tests
         // Transaction.Create()
             .Configure(x =>
             {
-                x.TurnOnConsoleLogging();
+                // x.TurnOnConsoleLogging();
                 x.Retry();
-                // x.Subscribe(Observer.Create<MyObserver2>(), Observer.Create<MyObserver>());
+                x.Subscribe(Observer.Create<MyObserver2>(), Observer.Create<MyObserver>());
             })
             .AddOperations(op1, op2, op3)
             .Execute();

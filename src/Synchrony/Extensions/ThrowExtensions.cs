@@ -45,13 +45,10 @@ internal static class ThrowExtensions
         bool success = function.Invoke(input);
         var context = contextBuilder.Invoke(input);
 
-        if (!success)
-        {
-            observers.SendToObservers(context);
-            throw new TransactionPersistenceException();
-        }
-
         observers.SendToObservers(context);
+
+        if (!success)
+            throw new TransactionPersistenceException();
     }
 
     static void ThrowIfFailed<T, TState, TContext>(Func<T, TState, bool> function, T input, TState state, Func<T, TContext> contextBuilder,
@@ -64,12 +61,9 @@ internal static class ThrowExtensions
         bool success = function.Invoke(input, state);
         var context = contextBuilder.Invoke(input);
 
-        if (!success)
-        {
-            observers.SendToObservers(context);
-            throw new TransactionPersistenceException();
-        }
-
         observers.SendToObservers(context);
+
+        if (!success)
+            throw new TransactionPersistenceException();
     }
 }

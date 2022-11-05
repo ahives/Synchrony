@@ -7,11 +7,15 @@ using Persistence;
 public abstract class AtomicTransaction :
     ObservableTransaction
 {
-    private readonly IPersistenceProvider _persistence;
+    protected readonly IPersistenceProvider _persistence;
+    protected readonly IReadOnlyList<OperationEntity> _operationsInDatabase;
+    protected readonly Guid _transactionId;
 
-    protected AtomicTransaction(IPersistenceProvider persistence)
+    protected AtomicTransaction(IPersistenceProvider persistence, Guid transactionId)
     {
         _persistence = persistence;
+        _transactionId = transactionId;
+        _operationsInDatabase = persistence.GetAllOperations(transactionId);
     }
 
     protected virtual bool IsTransactionExecutable(Guid transactionId)
@@ -30,14 +34,13 @@ public abstract class AtomicTransaction :
 
     protected virtual (bool succeeded, List<ValidationResult> results, int index) TryDoWork(
         List<TransactionOperation> operations,
-        Guid transactionId,
         TransactionConfig config)
     {
-        int start = _persistence.GetStartOperation(transactionId);
-        var persistedOperations = _persistence.GetAllOperations(transactionId);
+        int start = _persistence.GetStartOperation(_transactionId);
+        var persistedOperations = _persistence.GetAllOperations(_transactionId);
 
         (bool succeeded, List<ValidationResult> results, int index) =
-            operations.ForEach(persistedOperations, start, transactionId, (operation, _) =>
+            operations.ForEach(persistedOperations, start, _transactionId, (operation, _) =>
             {
                 if (config.ConsoleLoggingOn)
                     Console.WriteLine($"Executing operation {operation.SequenceNumber}");
@@ -51,7 +54,7 @@ public abstract class AtomicTransaction :
 
                 _persistence
                     .TryUpdateOperationState()
-                    .ThrowIfFailed(operation.OperationId, transactionId,
+                    .ThrowIfFailed(operation.OperationId, _transactionId,
                         success ? OperationState.Completed : OperationState.Failed, _operationObservers);
 
                 return success;
@@ -59,7 +62,7 @@ public abstract class AtomicTransaction :
 
         _persistence
             .TryUpdateTransaction()
-            .ThrowIfFailed(transactionId, succeeded ? TransactionState.Completed : TransactionState.Failed, _transactionObservers);
+            .ThrowIfFailed(_transactionId, succeeded ? TransactionState.Completed : TransactionState.Failed, _transactionObservers);
 
         return (succeeded, results, index);
     }

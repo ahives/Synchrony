@@ -10,7 +10,7 @@ internal static class ForEachExtensions
         IReadOnlyList<OperationEntity> operations,
         int start,
         Guid transactionId,
-        Action<TransactionOperation> action)
+        Action<TransactionOperation, bool> action)
     {
         Guard.IsNotNull(builders);
         Guard.IsNotNull(action);
@@ -21,10 +21,8 @@ internal static class ForEachExtensions
             var targetOperation = operations.FirstOrDefault(x =>
                 x.Name == operation.Name && (x.State == (int) OperationState.New ||
                                              x.State == (int) OperationState.Pending));
-            if (targetOperation != default)
-                continue;
-            
-            action(operation);
+
+            action(operation, targetOperation != default);
             
             yield return operation;
         }

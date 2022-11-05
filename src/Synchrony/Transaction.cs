@@ -10,18 +10,13 @@ public sealed class Transaction :
     ITransaction
 {
     private TransactionConfig _config;
-    private readonly IPersistenceProvider _persistence;
-    private readonly IReadOnlyList<OperationEntity> _operationsInDatabase;
     private readonly List<IOperationBuilder> _operationsInSession;
-    private readonly Guid _transactionId;
+    private bool _wasConfigured;
 
-    private Transaction(IPersistenceProvider persistence, Guid transactionId) : base(persistence)
+    private Transaction(IPersistenceProvider persistence) : base(persistence, NewId.NextGuid())
     {
         _config = SynchronyConfigCache.Default;
-        _persistence = persistence;
-        _operationsInDatabase = persistence.GetAllOperations(transactionId);
         _operationsInSession = new List<IOperationBuilder>();
-        _transactionId = transactionId;
     }
 
     public ITransaction Configure(Action<TransactionConfigurator> configurator)
@@ -44,6 +39,8 @@ public sealed class Transaction :
             .TrySaveTransaction()
             .ThrowIfFailed(GetTransactionId(), TransactionState.New, _transactionObservers);
 
+        _wasConfigured = true;
+        
         return this;
     }
 
@@ -66,6 +63,9 @@ public sealed class Transaction :
 
     public void Execute()
     {
+        if (!_wasConfigured)
+            throw new SynchronyConfigurationException();
+        
         if (!IsTransactionExecutable(_transactionId))
             return;
 
@@ -74,7 +74,7 @@ public sealed class Transaction :
             .ThrowIfFailed(_transactionId, TransactionState.Pending, _transactionObservers);
 
         var operations = GetOperations();
-        (bool workSucceeded, IReadOnlyList<ValidationResult> _, int index) = TryDoWork(operations, _transactionId, _config);
+        (bool workSucceeded, IReadOnlyList<ValidationResult> _, int index) = TryDoWork(operations, _config);
 
         if (workSucceeded)
         {
@@ -89,21 +89,21 @@ public sealed class Transaction :
 
     public static ITransaction Create() => Create(Database.Provider);
 
-    public static ITransaction Create(IPersistenceProvider provider)
-    {
-        var transactionId = NewId.NextGuid();
-        
-        return new Transaction(provider, transactionId);
-    }
+    public static ITransaction Create(IPersistenceProvider provider) => new Transaction(provider);
 
     List<TransactionOperation> GetOperations()
     {
         return _operationsInSession
-            .ForEach(_operationsInDatabase, _operationsInDatabase.Count, _transactionId, x =>
+            .ForEach(_operationsInDatabase, _operationsInDatabase.Count, _transactionId, (x, isNewRecord) =>
             {
-                _persistence
-                    .TrySaveOperation()
-                    .ThrowIfFailed(x, OperationState.New, _operationObservers);
+                if (isNewRecord)
+                    _persistence
+                        .TrySaveOperation()
+                        .ThrowIfFailed(x, OperationState.New, _operationObservers);
+                else
+                    _persistence
+                        .TryUpdateOperationState()
+                        .ThrowIfFailed(x.OperationId, x.TransactionId, OperationState.Pending, _operationObservers);
             })
             .ToList();
     }

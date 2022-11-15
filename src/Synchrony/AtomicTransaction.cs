@@ -1,5 +1,7 @@
 namespace Synchrony;
 
+using MassTransit.Mediator;
+using StateMachines.Events;
 using Extensions;
 using Configuration;
 using Persistence;
@@ -10,88 +12,65 @@ public abstract class AtomicTransaction :
     protected readonly IPersistenceProvider _persistence;
     protected readonly IReadOnlyList<OperationEntity> _operationsInDatabase;
     protected readonly Guid _transactionId;
+    protected readonly IMediator _mediator;
 
-    protected AtomicTransaction(IPersistenceProvider persistence, Guid transactionId)
+    protected AtomicTransaction(Guid transactionId, IMediator mediator)
     {
-        _persistence = persistence;
         _transactionId = transactionId;
-        _operationsInDatabase = persistence.GetAllOperations(transactionId);
+        _mediator = mediator;
     }
 
-    protected virtual bool IsTransactionExecutable(Guid transactionId)
+    protected virtual async Task<(bool, int)> TryDoWork(List<TransactionOperation> operations, TransactionConfig config)
     {
-        if (!_persistence.TryGetTransaction(transactionId, out TransactionEntity transaction))
-            return true;
+        // int start = _persistence.GetStartOperation(_transactionId);
 
-        TransactionState state = (TransactionState) transaction.State;
-
-        return state switch
-        {
-            TransactionState.Completed => false,
-            _ => true
-        };
-    }
-
-    protected virtual (bool succeeded, List<ValidationResult> results, int index) TryDoWork(
-        List<TransactionOperation> operations,
-        TransactionConfig config)
-    {
-        int start = _persistence.GetStartOperation(_transactionId);
-        var persistedOperations = _persistence.GetAllOperations(_transactionId);
-
-        (bool succeeded, List<ValidationResult> results, int index) =
-            operations.ForEach(persistedOperations, start, _transactionId, (operation, _) =>
+        (bool succeeded, int index) =
+            await operations.ForEach(0, async (operation, _) =>
             {
                 if (config.ConsoleLoggingOn)
                     Console.WriteLine($"Executing operation {operation.SequenceNumber}");
 
-                _persistence
-                    .TryUpdateOperationState()
-                    .ThrowIfFailed(operation.OperationId, operation.TransactionId, OperationState.Pending,
-                        _operationObservers);
-
                 bool success = operation.Work.Invoke();
 
-                _persistence
-                    .TryUpdateOperationState()
-                    .ThrowIfFailed(operation.OperationId, _transactionId,
-                        success ? OperationState.Completed : OperationState.Failed, _operationObservers);
+                if (success)
+                    await _mediator.Publish<OperationCompleted>(new()
+                    {
+                        OperationId = operation.OperationId,
+                        TransactionId = _transactionId
+                    });
+                else
+                    await _mediator.Publish<OperationFailed>(new()
+                    {
+                        OperationId = operation.OperationId,
+                        TransactionId = _transactionId
+                    });
 
                 return success;
             });
 
-        _persistence
-            .TryUpdateTransaction()
-            .ThrowIfFailed(_transactionId, succeeded ? TransactionState.Completed : TransactionState.Failed, _transactionObservers);
+        if (succeeded)
+            await _mediator.Publish<TransactionCompleted>(new() {TransactionId = _transactionId});
+        else
+            await _mediator.Publish<TransactionFailed>(new() {TransactionId = _transactionId});
 
-        return (succeeded, results, index);
+        return (succeeded, index);
     }
 
-    protected virtual bool TryDoCompensation(
+    protected virtual async Task<bool> TryDoCompensation(
         List<TransactionOperation> operations,
         Guid transactionId,
         int index,
         TransactionConfig config)
     {
-        _persistence
-            .TryUpdateTransaction()
-            .ThrowIfFailed(transactionId, TransactionState.Failed, _transactionObservers);
-
-        operations.ForEach(index, operation =>
+        operations.ForEach(index, async operation =>
         {
             if (config.ConsoleLoggingOn)
                 Console.WriteLine($"Compensating operation {operation.SequenceNumber}");
 
             operation.Compensation.Invoke();
 
-            _persistence
-                .TryUpdateOperationState()
-                .ThrowIfFailed(operation.OperationId, operation.TransactionId, OperationState.Compensated, _operationObservers);
+            await _mediator.Publish<RequestCompensation>(new() {OperationId = operation.OperationId, TransactionId = transactionId});
         });
-
-        _persistence
-            .TryUpdateTransaction()
-            .ThrowIfFailed(transactionId, TransactionState.Compensated, _transactionObservers);
 
         return true;
     }

@@ -1,6 +1,8 @@
 namespace Synchrony;
 
 using MassTransit;
+using MassTransit.Mediator;
+using StateMachines.Events;
 using Configuration;
 using Persistence;
 using Extensions;
@@ -10,13 +12,13 @@ public sealed class Transaction :
     ITransaction
 {
     private TransactionConfig _config;
-    private readonly List<IOperationBuilder> _operationsInSession;
+    private readonly List<IOperationBuilder> _operations;
     private bool _wasConfigured;
 
-    private Transaction(IPersistenceProvider persistence) : base(persistence, NewId.NextGuid())
+    public Transaction(IMediator mediator) : base(NewId.NextGuid(), mediator)
     {
         _config = SynchronyConfigCache.Default;
-        _operationsInSession = new List<IOperationBuilder>();
+        _operations = new List<IOperationBuilder>();
     }
 
     public ITransaction Configure(Action<TransactionConfigurator> configurator)
@@ -35,10 +37,6 @@ public sealed class Transaction :
         
         _config = config;
 
-        _persistence
-            .TrySaveTransaction()
-            .ThrowIfFailed(GetTransactionId(), TransactionState.New, _transactionObservers);
-
         _wasConfigured = true;
         
         return this;
@@ -56,25 +54,20 @@ public sealed class Transaction :
 
     public ITransaction AddOperations(IOperationBuilder builder, params IOperationBuilder[] builders)
     {
-        _operationsInSession.AddRange(builders.Prepend(builder).ToList());
+        _operations.AddRange(builders.Prepend(builder).ToList());
 
         return this;
     }
 
-    public void Execute()
+    public async Task Execute()
     {
         if (!_wasConfigured)
             throw new SynchronyConfigurationException();
-        
-        if (!IsTransactionExecutable(_transactionId))
-            return;
 
-        _persistence
-            .TryUpdateTransaction()
-            .ThrowIfFailed(_transactionId, TransactionState.Pending, _transactionObservers);
+        await _mediator.Publish<StartTransaction>(new() {TransactionId = GetTransactionId()});
 
         var operations = GetOperations();
-        (bool workSucceeded, IReadOnlyList<ValidationResult> _, int index) = TryDoWork(operations, _config);
+        (bool workSucceeded, int index) = await TryDoWork(operations, _config);
 
         if (workSucceeded)
         {
@@ -82,29 +75,24 @@ public sealed class Transaction :
             return;
         }
 
-        bool compensated = TryDoCompensation(operations, _transactionId, index, _config);
+        bool compensated = await TryDoCompensation(operations, _transactionId, index, _config);
         
         StopSendingNotifications();
     }
 
-    public static ITransaction Create() => Create(Database.Provider);
-
-    public static ITransaction Create(IPersistenceProvider provider) => new Transaction(provider);
-
     List<TransactionOperation> GetOperations()
     {
-        return _operationsInSession
-            .ForEach(_operationsInDatabase, _operationsInDatabase.Count, _transactionId, (x, isNewRecord) =>
-            {
-                if (isNewRecord)
-                    _persistence
-                        .TrySaveOperation()
-                        .ThrowIfFailed(x, OperationState.New, _operationObservers);
-                else
-                    _persistence
-                        .TryUpdateOperationState()
-                        .ThrowIfFailed(x.OperationId, x.TransactionId, OperationState.Pending, _operationObservers);
-            })
+        return _operations
+            .ForEach(0, _transactionId, async operation =>
+                {
+                    await _mediator.Publish<StartOperation>(new()
+                    {
+                        OperationId = operation.OperationId,
+                        TransactionId = _transactionId,
+                        Name = operation.Name,
+                        SequenceNumber = operation.SequenceNumber
+                    });
+                })
             .ToList();
     }
 

@@ -4,7 +4,7 @@ using Configuration;
 
 public interface ITransaction
 {
-    void Execute();
+    Task Execute();
 
     ITransaction AddOperations(IOperationBuilder builder, params IOperationBuilder[] builders);
 

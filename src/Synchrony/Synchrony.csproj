@@ -1,15 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net6.0</TargetFramework>
+        <TargetFramework>net7.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <LangVersion>11</LangVersion>
     </PropertyGroup>
 
     <ItemGroup>
       <PackageReference Include="CommunityToolkit.Diagnostics" Version="8.0.0" />
+      <PackageReference Include="MassTransit" Version="8.0.8" />
       <PackageReference Include="Microsoft.EntityFrameworkCore" Version="6.0.10" />
-      <PackageReference Include="NewId" Version="3.0.3" />
     </ItemGroup>
 
 </Project>

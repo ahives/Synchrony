@@ -1,3 +1,7 @@
+using MassTransit;
+using Synchrony.StateMachines;
+using Synchrony.StateMachines.Sagas;
+
 namespace SynchronyTests;
 
 using Synchrony;
@@ -16,6 +20,13 @@ public class Tests
         _services = new ServiceCollection()
             .AddSingleton<IPersistenceProvider, TestPersistenceProvider>()
             .AddTransient<ITransaction, Transaction>()
+            .AddMediator(x =>
+            {
+                // x.AddSagaRepository<TransactionState2>();
+                x.AddSagaStateMachine<TransactionStateMachine, TransactionState2>();
+                x.AddSagaStateMachine<OperationStateMachine, OperationState2>();
+                x.SetInMemorySagaRepositoryProvider();
+            })
             .BuildServiceProvider();
     }
     
@@ -44,22 +55,21 @@ public class Tests
     // }
 
     [Test]
-    public void Test2()
+    public async Task Test2()
     {
         var op1 = Operation.Create<Operation1>();
         var op2 = Operation.Create<Operation2>();
         var op3 = Operation.Create<Operation3>();
 
-        Transaction.Create(TestDatabase.Provider)
-        // Transaction.Create()
-            .Configure(x =>
+        await _services.GetService<ITransaction>()
+            ?.Configure(x =>
             {
                 // x.TurnOnConsoleLogging();
-                x.Retry();
+                // x.Retry();
                 x.Subscribe(Observer.Create<MyObserver2>(), Observer.Create<MyObserver>());
             })
             .AddOperations(op1, op2, op3)
-            .Execute();
+            .Execute()!;
         
         Assert.Pass();
     }

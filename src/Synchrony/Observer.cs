@@ -2,7 +2,7 @@ namespace Synchrony;
 
 public static class Observer
 {
-    public static object Create<T>()
+    public static T Create<T>()
     {
         return CreateInstance<T>(typeof(T));
     }

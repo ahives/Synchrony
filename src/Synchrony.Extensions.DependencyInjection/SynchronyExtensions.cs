@@ -14,8 +14,8 @@ public static class SynchronyExtensions
         services.AddTransient<ITransaction, Transaction>();
         services.AddMediator(x =>
         {
-            x.AddSagaStateMachine<TransactionStateMachine, TransactionState2>();
-            x.AddSagaStateMachine<OperationStateMachine, OperationState2>();
+            x.AddSagaStateMachine<TransactionStateMachine, TransactionState>();
+            x.AddSagaStateMachine<OperationStateMachine, OperationState>();
             x.SetInMemorySagaRepositoryProvider();
         });
 

@@ -8,17 +8,23 @@ using Persistence;
 using Extensions;
 
 public sealed class Transaction :
-    AtomicTransaction,
+    ObservableTransaction,
     ITransaction
 {
+    private readonly IPersistenceProvider _persistence;
+    private readonly IReadOnlyList<OperationEntity> _operationsInDatabase;
+    private readonly Guid _transactionId;
+    private readonly IMediator _mediator;
     private TransactionConfig _config;
     private readonly List<IOperationBuilder> _operations;
     private bool _wasConfigured;
 
-    public Transaction(IMediator mediator) : base(NewId.NextGuid(), mediator)
+    public Transaction(IMediator mediator)
     {
+        _mediator = mediator;
         _config = SynchronyConfigCache.Default;
         _operations = new List<IOperationBuilder>();
+        _transactionId = NewId.NextGuid();
     }
 
     public ITransaction Configure(Action<TransactionConfigurator> configurator)
@@ -30,10 +36,10 @@ public sealed class Transaction :
         {
             ConsoleLoggingOn = impl.ConsoleLoggingOn,
             TransactionRetry = impl.TransactionRetry,
+            Subscribers = impl.Subscribers
         };
 
-        impl.TransactionSubscribers.ForEach(x => Subscribe(x));
-        impl.OperationSubscribers.ForEach(x => Subscribe(x));
+        config.Subscribers.ForEach(x => Subscribe(x));
         
         _config = config;
 
@@ -80,6 +86,61 @@ public sealed class Transaction :
         StopSendingNotifications();
     }
 
+    async Task<(bool, int)> TryDoWork(List<TransactionOperation> operations, TransactionConfig config)
+    {
+        // int start = _persistence.GetStartOperation(_transactionId);
+
+        (bool succeeded, int index) =
+            await operations.ForEach(0, async (operation, _) =>
+            {
+                if (config.ConsoleLoggingOn)
+                    Console.WriteLine($"Executing operation {operation.SequenceNumber}");
+
+                bool success = operation.Work.Invoke();
+
+                if (success)
+                    await _mediator.Publish<OperationCompleted>(new()
+                    {
+                        OperationId = operation.OperationId,
+                        TransactionId = _transactionId
+                    });
+                else
+                    await _mediator.Publish<OperationFailed>(new()
+                    {
+                        OperationId = operation.OperationId,
+                        TransactionId = _transactionId
+                    });
+
+                return success;
+            });
+
+        if (succeeded)
+            await _mediator.Publish<TransactionCompleted>(new() {TransactionId = _transactionId});
+        else
+            await _mediator.Publish<TransactionFailed>(new() {TransactionId = _transactionId});
+
+        return (succeeded, index);
+    }
+
+    async Task<bool> TryDoCompensation(
+        List<TransactionOperation> operations,
+        Guid transactionId,
+        int index,
+        TransactionConfig config)
+    {
+        operations.ForEach(index, async operation =>
+        {
+            if (config.ConsoleLoggingOn)
+                Console.WriteLine($"Compensating operation {operation.SequenceNumber}");
+
+            operation.Compensation.Invoke();
+
+            await _mediator.Publish<RequestCompensation>(new() {OperationId = operation.OperationId, TransactionId = transactionId});
+        });
+
+        return true;
+    }
+
     List<TransactionOperation> GetOperations()
     {
         return _operations
@@ -100,22 +161,19 @@ public sealed class Transaction :
     class TransactionConfiguratorImpl :
         TransactionConfigurator
     {
-        private readonly List<IObserver<TransactionContext>> _transactionObservers;
-        private readonly List<IObserver<OperationContext>> _operationObservers;
+        private readonly List<IObserver<TransactionContext>> _subscribers;
         
         public bool LoggingOn { get; private set; }
         public bool ConsoleLoggingOn { get; private set; }
         public TransactionRetry TransactionRetry { get; private set; }
-        public List<IObserver<TransactionContext>> TransactionSubscribers => _transactionObservers;
-        public List<IObserver<OperationContext>> OperationSubscribers => _operationObservers;
+        public List<IObserver<TransactionContext>> Subscribers => _subscribers;
 
 
         public TransactionConfiguratorImpl()
         {
             TransactionRetry = TransactionRetry.None;
             
-            _transactionObservers = new List<IObserver<TransactionContext>>();
-            _operationObservers = new List<IObserver<OperationContext>>();
+            _subscribers = new List<IObserver<TransactionContext>>();
         }
 
         public void TurnOnLogging() => LoggingOn = true;
@@ -134,22 +192,13 @@ public sealed class Transaction :
 
         void Subscribe(object observer)
         {
-            if (observer.GetType().IsAssignableTo(typeof(IObserver<TransactionContext>)))
-            {
-                if (observer is not IObserver<TransactionContext> op)
-                    return;
-                
-                _transactionObservers.Add(op);
+            if (!observer.GetType().IsAssignableTo(typeof(IObserver<TransactionContext>)))
                 return;
-            }
-            
-            if (observer.GetType().IsAssignableTo(typeof(IObserver<OperationContext>)))
-            {
-                if (observer is not IObserver<OperationContext> op)
-                    return;
+
+            if (observer is not IObserver<TransactionContext> op)
+                return;
                 
-                _operationObservers.Add(op);
-            }
+            _subscribers.Add(op);
         }
     }
 }

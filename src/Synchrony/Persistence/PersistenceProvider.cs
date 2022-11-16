@@ -18,7 +18,7 @@ public class PersistenceProvider :
         OperationEntity? operation = null;
         for (int i = 0; i < operations.Count; i++)
         {
-            if (!IsOperationExecutable((OperationState) operations[i].State))
+            if (!IsOperationExecutable((TransactionStates) operations[i].State))
                 continue;
             
             operation = operations[i];
@@ -39,7 +39,7 @@ public class PersistenceProvider :
             var entity = new TransactionEntity
             {
                 Id = transactionId,
-                State = (int) TransactionState.New,
+                State = (int) TransactionStates.New,
                 CreationTimestamp = DateTimeOffset.UtcNow
             };
 
@@ -49,7 +49,7 @@ public class PersistenceProvider :
             return db.Entry(entity).State == EntityState.Added;
         };
 
-    public Func<Guid, TransactionState, bool> TryUpdateTransaction() =>
+    public Func<Guid, TransactionStates, bool> TryUpdateTransaction() =>
         (transactionId, state) =>
         {
             using var db = new TransactionDbContext();
@@ -70,26 +70,26 @@ public class PersistenceProvider :
             return db.Entry(transaction).State == EntityState.Modified;
         };
 
-    public Func<Guid, OperationState, bool> TryUpdateOperationState() =>
-        (operationId, state) =>
-        {
-            using var db = new TransactionDbContext();
-
-            var operation = (from op in db.Operations
-                    where op.Id == operationId
-                    select op)
-                .FirstOrDefault();
-
-            if (operation == null)
-                return false;
-
-            operation.State = (int) state;
-
-            db.Operations.Update(operation);
-            db.SaveChanges();
-
-            return db.Entry(operation).State == EntityState.Modified;
-        };
+    // public Func<Guid, OperationState, bool> TryUpdateOperationState() =>
+    //     (operationId, state) =>
+    //     {
+    //         using var db = new TransactionDbContext();
+    //
+    //         var operation = (from op in db.Operations
+    //                 where op.Id == operationId
+    //                 select op)
+    //             .FirstOrDefault();
+    //
+    //         if (operation == null)
+    //             return false;
+    //
+    //         operation.State = (int) state;
+    //
+    //         db.Operations.Update(operation);
+    //         db.SaveChanges();
+    //
+    //         return db.Entry(operation).State == EntityState.Modified;
+    //     };
 
     public Func<TransactionOperation, bool> TrySaveOperation() =>
         operation =>
@@ -101,7 +101,7 @@ public class PersistenceProvider :
                 Id = operation.OperationId,
                 TransactionId = operation.TransactionId,
                 Name = operation.Name,
-                State = (int) TransactionState.New,
+                State = (int) TransactionStates.New,
                 CreationTimestamp = DateTimeOffset.UtcNow
             };
 
@@ -132,12 +132,12 @@ public class PersistenceProvider :
         return transaction is not null;
     }
 
-    bool IsOperationExecutable(OperationState state) =>
+    bool IsOperationExecutable(TransactionStates state) =>
         state switch
         {
-            OperationState.New => true,
-            OperationState.Pending => true,
-            OperationState.Failed => true,
+            TransactionStates.New => true,
+            TransactionStates.Pending => true,
+            TransactionStates.Failed => true,
             _ => false
         };
 }

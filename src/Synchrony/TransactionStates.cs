@@ -1,6 +1,6 @@
 namespace Synchrony;
 
-public enum TransactionState
+public enum TransactionStates
 {
     New = 1,
     Pending = 2,

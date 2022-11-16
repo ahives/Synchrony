@@ -11,12 +11,7 @@ public class TestPersistenceProvider :
         return 0;
     }
 
-    public Func<Guid, TransactionState, bool> TryUpdateTransaction()
-    {
-        return (_, _) => true;
-    }
-
-    public Func<Guid, OperationState, bool> TryUpdateOperationState()
+    public Func<Guid, TransactionStates, bool> TryUpdateTransaction()
     {
         return (_, _) => true;
     }
@@ -53,7 +48,7 @@ public class TestPersistenceProvider :
     {
         transaction = new TransactionEntity
         {
-            Id = NewId.NextGuid(), State = (int) TransactionState.Pending, CreationTimestamp = DateTimeOffset.UtcNow
+            Id = NewId.NextGuid(), State = (int) TransactionStates.Pending, CreationTimestamp = DateTimeOffset.UtcNow
         };
         return true;
     }

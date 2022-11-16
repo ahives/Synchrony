@@ -5,7 +5,7 @@ using Events;
 using Sagas;
 
 public class OperationStateMachine :
-    MassTransitStateMachine<OperationState2>
+    MassTransitStateMachine<OperationState>
 {
     public State Completed { get; }
     public State Failed { get; }
@@ -46,19 +46,19 @@ public class OperationStateMachine :
             Ignore(OperationFailed));
     }
 
-    bool IsExecutable(BehaviorContext<OperationState2,StartOperation> operation)
+    bool IsExecutable(BehaviorContext<OperationState,StartOperation> operation)
     {
         if (operation.Message.Name != operation.Saga.Name)
             return true;
         
-        switch ((OperationState)operation.Saga.State)
+        switch ((TransactionStates)operation.Saga.State)
         {
-            case OperationState.New:
-            case OperationState.Pending:
+            case TransactionStates.New:
+            case TransactionStates.Pending:
                 return true;
-            case OperationState.Failed:
-            case OperationState.Completed:
-            case OperationState.Compensated:
+            case TransactionStates.Failed:
+            case TransactionStates.Completed:
+            case TransactionStates.Compensated:
             default:
                 return false;
         }
@@ -74,7 +74,7 @@ public class OperationStateMachine :
 }
 
 public class InitActivity :
-    IStateMachineActivity<OperationState2, StartOperation>
+    IStateMachineActivity<OperationState, StartOperation>
 {
     public void Probe(ProbeContext context)
     {
@@ -86,12 +86,12 @@ public class InitActivity :
         throw new NotImplementedException();
     }
 
-    public async Task Execute(BehaviorContext<OperationState2, StartOperation> context, IBehavior<OperationState2, StartOperation> next)
+    public async Task Execute(BehaviorContext<OperationState, StartOperation> context, IBehavior<OperationState, StartOperation> next)
     {
         await next.Execute(context).ConfigureAwait(false);
     }
 
-    public Task Faulted<TException>(BehaviorExceptionContext<OperationState2, StartOperation, TException> context, IBehavior<OperationState2, StartOperation> next) where TException : Exception
+    public Task Faulted<TException>(BehaviorExceptionContext<OperationState, StartOperation, TException> context, IBehavior<OperationState, StartOperation> next) where TException : Exception
     {
         throw new NotImplementedException();
     }

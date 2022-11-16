@@ -2,7 +2,7 @@ namespace Synchrony.StateMachines.Sagas;
 
 using MassTransit;
 
-public record TransactionState2 :
+public record TransactionState :
     SagaStateMachineInstance
 {
     public Guid Id { get; init; }

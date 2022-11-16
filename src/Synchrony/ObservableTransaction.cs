@@ -1,45 +1,29 @@
 namespace Synchrony;
 
 public abstract class ObservableTransaction :
-    IObservable<TransactionContext>,
-    IObservable<OperationContext>
+    IObservable<TransactionContext>
 {
-    protected readonly List<IObserver<TransactionContext>> _transactionObservers;
-    protected readonly List<IObserver<OperationContext>> _operationObservers;
+    protected readonly List<IObserver<TransactionContext>> _observers;
 
     protected ObservableTransaction()
     {
-        _transactionObservers = new List<IObserver<TransactionContext>>();
-        _operationObservers = new List<IObserver<OperationContext>>();
+        _observers = new List<IObserver<TransactionContext>>();
     }
 
     public IDisposable Subscribe(IObserver<TransactionContext> observer)
     {
-        if (!_transactionObservers.Contains(observer))
-            _transactionObservers.Add(observer);
+        if (!_observers.Contains(observer))
+            _observers.Add(observer);
 
-        return new UnSubscriber<TransactionContext>(_transactionObservers, observer);
-    }
-
-    public IDisposable Subscribe(IObserver<OperationContext> observer)
-    {
-        if (!_operationObservers.Contains(observer))
-            _operationObservers.Add(observer);
-
-        return new UnSubscriber<OperationContext>(_operationObservers, observer);
+        return new UnSubscriber<TransactionContext>(_observers, observer);
     }
 
     protected virtual void StopSendingNotifications()
     {
-        foreach (var observer in _transactionObservers)
+        foreach (var observer in _observers)
             observer.OnCompleted();
 
-        _transactionObservers.Clear();
-
-        foreach (var observer in _operationObservers)
-            observer.OnCompleted();
-
-        _operationObservers.Clear();
+        _observers.Clear();
     }
 
     

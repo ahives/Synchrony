@@ -5,7 +5,7 @@ using Events;
 using Sagas;
 
 public class TransactionStateMachine :
-    MassTransitStateMachine<TransactionState2>
+    MassTransitStateMachine<TransactionState>
 {
     public State Completed { get; }
     public State Failed { get; }

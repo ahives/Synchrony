@@ -5,4 +5,6 @@ public record TransactionConfig
     public bool ConsoleLoggingOn { get; init; }
 
     public TransactionRetry TransactionRetry { get; init; }
+    
+    public List<IObserver<TransactionContext>> Subscribers { get; init; }
 }

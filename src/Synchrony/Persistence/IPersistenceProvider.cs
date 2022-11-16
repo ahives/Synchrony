@@ -4,9 +4,7 @@ public interface IPersistenceProvider
 {
     int GetStartOperation(Guid transactionId);
 
-    Func<Guid, TransactionState, bool> TryUpdateTransaction();
-
-    Func<Guid, OperationState, bool> TryUpdateOperationState();
+    Func<Guid, TransactionStates, bool> TryUpdateTransaction();
     
     Func<TransactionOperation, bool> TrySaveOperation();
 

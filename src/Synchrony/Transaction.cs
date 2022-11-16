@@ -34,7 +34,6 @@ public sealed class Transaction :
 
         var config = new TransactionConfig
         {
-            ConsoleLoggingOn = impl.ConsoleLoggingOn,
             TransactionRetry = impl.TransactionRetry,
             Subscribers = impl.Subscribers
         };
@@ -93,8 +92,7 @@ public sealed class Transaction :
         (bool succeeded, int index) =
             await operations.ForEach(0, async (operation, _) =>
             {
-                if (config.ConsoleLoggingOn)
-                    Console.WriteLine($"Executing operation {operation.SequenceNumber}");
+                Console.WriteLine($"Executing operation {operation.SequenceNumber}");
 
                 bool success = operation.Work.Invoke();
 
@@ -130,8 +128,7 @@ public sealed class Transaction :
     {
         operations.ForEach(index, async operation =>
         {
-            if (config.ConsoleLoggingOn)
-                Console.WriteLine($"Compensating operation {operation.SequenceNumber}");
+            Console.WriteLine($"Compensating operation {operation.SequenceNumber}");
 
             operation.Compensation.Invoke();
 
@@ -164,7 +161,6 @@ public sealed class Transaction :
         private readonly List<IObserver<TransactionContext>> _subscribers;
         
         public bool LoggingOn { get; private set; }
-        public bool ConsoleLoggingOn { get; private set; }
         public TransactionRetry TransactionRetry { get; private set; }
         public List<IObserver<TransactionContext>> Subscribers => _subscribers;
 
@@ -177,15 +173,12 @@ public sealed class Transaction :
         }
 
         public void TurnOnLogging() => LoggingOn = true;
-
-        public void TurnOnConsoleLogging() => ConsoleLoggingOn = true;
         
         public void Retry(TransactionRetry retry = TransactionRetry.None) => TransactionRetry = retry;
 
         public void Subscribe(object observer, params object[] observers)
         {
             Subscribe(observer);
-
             for (int i = 0; i < observers.Length; i++)
                 Subscribe(observers[i]);
         }

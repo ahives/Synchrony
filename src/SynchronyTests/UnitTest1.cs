@@ -45,7 +45,6 @@ public class Tests
     //     new Transaction(TestDatabase.Provider)
     //         .Configure(x =>
     //         {
-    //             x.TurnOnConsoleLogging();
     //             x.Retry();
     //         })
     //         .AddOperations(op1, op2, op3)
@@ -64,7 +63,6 @@ public class Tests
         await _services.GetService<ITransaction>()
             ?.Configure(x =>
             {
-                // x.TurnOnConsoleLogging();
                 // x.Retry();
                 // x.Subscribe(Observer.Create<MyObserver2>(), Observer.Create<MyObserver>());
                 x.Subscribe(Observer.Create<MyObserver>());
@@ -85,7 +83,6 @@ public class Tests
         _services.GetService<ITransaction>()
             .Configure(x =>
             {
-                x.TurnOnConsoleLogging();
                 x.Retry();
             })
             .AddOperations(op1, op2, op3)

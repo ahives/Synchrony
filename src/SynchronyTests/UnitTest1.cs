@@ -1,4 +1,5 @@
 using MassTransit;
+using Microsoft.Extensions.Configuration;
 using Synchrony.StateMachines;
 using Synchrony.StateMachines.Sagas;
 
@@ -17,8 +18,13 @@ public class Tests
     [OneTimeSetUp]
     public void Init()
     {
+        // IConfiguration configuration = new ConfigurationBuilder()
+        //     .AddJsonFile("appsettings.json", false)
+        //     .Build();
+
         _services = new ServiceCollection()
             .AddSingleton<IPersistenceProvider, TestPersistenceProvider>()
+            // .AddScoped(_ => configuration)
             .AddTransient<ITransaction, Transaction>()
             .AddMediator(x =>
             {
@@ -27,6 +33,9 @@ public class Tests
                 x.AddSagaStateMachine<OperationStateMachine, OperationState>();
                 x.SetInMemorySagaRepositoryProvider();
             })
+            .AddLogging()
+            // .AddDbContext<TransactionDbContext>(x =>
+            //     x.UseNpgsql(configuration.GetConnectionString("")))
             .BuildServiceProvider();
     }
     
@@ -35,58 +44,19 @@ public class Tests
     {
     }
 
-    // [Test]
-    // public void Test1()
-    // {
-    //     var op1 = Operation.Create<Operation1>();
-    //     var op2 = Operation.Create<Operation2>();
-    //     var op3 = Operation.Create<Operation3>();
-    //
-    //     new Transaction(TestDatabase.Provider)
-    //         .Configure(x =>
-    //         {
-    //             x.Retry();
-    //         })
-    //         .AddOperations(op1, op2, op3)
-    //         .Execute();
-    //     
-    //     Assert.Pass();
-    // }
-
     [Test]
-    public async Task Test2()
+    public async Task Test1()
     {
-        var op1 = Operation.Create<Operation1>();
-        var op2 = Operation.Create<Operation2>();
-        var op3 = Operation.Create<Operation3>();
-
         await _services.GetService<ITransaction>()
             ?.Configure(x =>
             {
-                // x.Retry();
-                // x.Subscribe(Observer.Create<MyObserver2>(), Observer.Create<MyObserver>());
                 x.Subscribe(Observer.Create<MyObserver>());
             })
-            .AddOperations(op1, op2, op3)
+            .AddOperations(
+                Operation.Create<Operation1>(),
+                Operation.Create<Operation2>(),
+                Operation.Create<Operation3>())
             .Execute()!;
-        
-        Assert.Pass();
-    }
-
-    [Test]
-    public void Test3()
-    {
-        var op1 = Operation.Create<Operation1>();
-        var op2 = Operation.Create<Operation2>();
-        var op3 = Operation.Create<Operation3>();
-
-        _services.GetService<ITransaction>()
-            .Configure(x =>
-            {
-                x.Retry();
-            })
-            .AddOperations(op1, op2, op3)
-            .Execute();
         
         Assert.Pass();
     }
@@ -94,12 +64,12 @@ public class Tests
     class Operation1 :
         OperationBuilder<Operation1>
     {
-        protected override Func<bool> DoWork()
+        public override Func<bool> DoWork()
         {
             return () => true;
         }
 
-        protected override Action Compensate()
+        public override Action OnFailure()
         {
             return () =>
             {
@@ -111,12 +81,12 @@ public class Tests
     class Operation2 :
         OperationBuilder<Operation2>
     {
-        protected override Func<bool> DoWork()
+        public override Func<bool> DoWork()
         {
             return () => true;
         }
 
-        protected override Action Compensate()
+        public override Action OnFailure()
         {
             return () =>
             {
@@ -128,7 +98,7 @@ public class Tests
     class Operation3 :
         OperationBuilder<Operation3>
     {
-        protected override Func<bool> DoWork()
+        public override Func<bool> DoWork()
         {
             return () => true;
         }

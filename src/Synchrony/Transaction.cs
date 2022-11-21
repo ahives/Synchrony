@@ -1,5 +1,6 @@
 namespace Synchrony;
 
+using Microsoft.Extensions.Logging;
 using MassTransit;
 using MassTransit.Mediator;
 using StateMachines.Events;
@@ -15,13 +16,15 @@ public sealed class Transaction :
     private readonly IReadOnlyList<OperationEntity> _operationsInDatabase;
     private readonly Guid _transactionId;
     private readonly IMediator _mediator;
-    private TransactionConfig _config;
+    private readonly ILogger<Transaction> _logger;
     private readonly List<IOperationBuilder> _operations;
+    private TransactionConfig _config;
     private bool _wasConfigured;
 
-    public Transaction(IMediator mediator)
+    public Transaction(IMediator mediator, ILogger<Transaction> logger)
     {
         _mediator = mediator;
+        _logger = logger;
         _config = SynchronyConfigCache.Default;
         _operations = new List<IOperationBuilder>();
         _transactionId = NewId.NextGuid();
@@ -70,9 +73,20 @@ public sealed class Transaction :
             throw new SynchronyConfigurationException();
 
         await _mediator.Publish<StartTransaction>(new() {TransactionId = GetTransactionId()});
+        
+        _operations
+            .ForEach(async builder =>
+            {
+                await _mediator.Publish<StartOperation>(new()
+                {
+                    OperationId = builder.GetId(),
+                    TransactionId = _transactionId,
+                    Name = builder.GetName(),
+                    // SequenceNumber = operation.SequenceNumber
+                });
+            });
 
-        var operations = GetOperations();
-        (bool workSucceeded, int index) = await TryDoWork(operations, _config);
+        (bool workSucceeded, int index) = await TryDoWork(_config);
 
         if (workSucceeded)
         {
@@ -80,32 +94,33 @@ public sealed class Transaction :
             return;
         }
 
-        bool compensated = await TryDoCompensation(operations, _transactionId, index, _config);
+        bool compensated = await TryDoCompensation(_transactionId, index, _config);
         
         StopSendingNotifications();
     }
 
-    async Task<(bool, int)> TryDoWork(List<TransactionOperation> operations, TransactionConfig config)
+    async Task<(bool, int)> TryDoWork(TransactionConfig config)
     {
         // int start = _persistence.GetStartOperation(_transactionId);
 
         (bool succeeded, int index) =
-            await operations.ForEach(0, async (operation, _) =>
+            await _operations.ForEach(0, async (operation, _) =>
             {
-                Console.WriteLine($"Executing operation {operation.SequenceNumber}");
+                // _logger.LogInformation("Executing operation {OperationSequenceNumber}", operation.SequenceNumber);
+                // Console.WriteLine($"Executing operation {operation.SequenceNumber}");
 
-                bool success = operation.Work.Invoke();
+                bool success = operation.DoWork().Invoke();
 
                 if (success)
                     await _mediator.Publish<OperationCompleted>(new()
                     {
-                        OperationId = operation.OperationId,
+                        OperationId = operation.GetId(),
                         TransactionId = _transactionId
                     });
                 else
                     await _mediator.Publish<OperationFailed>(new()
                     {
-                        OperationId = operation.OperationId,
+                        OperationId = operation.GetId(),
                         TransactionId = _transactionId
                     });
 
@@ -121,37 +136,25 @@ public sealed class Transaction :
     }
 
     async Task<bool> TryDoCompensation(
-        List<TransactionOperation> operations,
         Guid transactionId,
         int index,
         TransactionConfig config)
     {
-        operations.ForEach(index, async operation =>
+        _operations.ForEach(index, async operation =>
         {
-            Console.WriteLine($"Compensating operation {operation.SequenceNumber}");
+            // _logger.LogInformation("Compensating operation {OperationSequenceNumber}", operation.SequenceNumber);
+            // Console.WriteLine($"Compensating operation {operation.SequenceNumber}");
 
-            operation.Compensation.Invoke();
+            operation.OnFailure().Invoke();
 
-            await _mediator.Publish<RequestCompensation>(new() {OperationId = operation.OperationId, TransactionId = transactionId});
+            await _mediator.Publish<RequestCompensation>(new()
+            {
+                OperationId = operation.GetId(),
+                TransactionId = transactionId
+            });
         });
 
         return true;
-    }
-
-    List<TransactionOperation> GetOperations()
-    {
-        return _operations
-            .ForEach(0, _transactionId, async operation =>
-                {
-                    await _mediator.Publish<StartOperation>(new()
-                    {
-                        OperationId = operation.OperationId,
-                        TransactionId = _transactionId,
-                        Name = operation.Name,
-                        SequenceNumber = operation.SequenceNumber
-                    });
-                })
-            .ToList();
     }
 
 

@@ -6,7 +6,7 @@ public interface IPersistenceProvider
 
     Func<Guid, TransactionStates, bool> TryUpdateTransaction();
     
-    Func<TransactionOperation, bool> TrySaveOperation();
+    // Func<TransactionOperation, bool> TrySaveOperation();
 
     Func<Guid, bool> TrySaveTransaction();
 

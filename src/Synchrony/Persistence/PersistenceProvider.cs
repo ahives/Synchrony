@@ -91,25 +91,25 @@ public class PersistenceProvider :
     //         return db.Entry(operation).State == EntityState.Modified;
     //     };
 
-    public Func<TransactionOperation, bool> TrySaveOperation() =>
-        operation =>
-        {
-            using var db = new TransactionDbContext();
-
-            var entity = new OperationEntity
-            {
-                Id = operation.OperationId,
-                TransactionId = operation.TransactionId,
-                Name = operation.Name,
-                State = (int) TransactionStates.New,
-                CreationTimestamp = DateTimeOffset.UtcNow
-            };
-
-            db.Operations.Add(entity);
-            db.SaveChanges();
-
-            return db.Entry(entity).State == EntityState.Added;
-        };
+    // public Func<TransactionOperation, bool> TrySaveOperation() =>
+    //     operation =>
+    //     {
+    //         using var db = new TransactionDbContext();
+    //
+    //         var entity = new OperationEntity
+    //         {
+    //             Id = operation.OperationId,
+    //             TransactionId = operation.TransactionId,
+    //             Name = operation.Name,
+    //             State = (int) TransactionStates.New,
+    //             CreationTimestamp = DateTimeOffset.UtcNow
+    //         };
+    //
+    //         db.Operations.Add(entity);
+    //         db.SaveChanges();
+    //
+    //         return db.Entry(entity).State == EntityState.Added;
+    //     };
 
     public IReadOnlyList<OperationEntity> GetAllOperations(Guid transactionId)
     {

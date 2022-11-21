@@ -16,10 +16,10 @@ public class TestPersistenceProvider :
         return (_, _) => true;
     }
 
-    public Func<TransactionOperation, bool> TrySaveOperation()
-    {
-        return _ => true;
-    }
+    // public Func<TransactionOperation, bool> TrySaveOperation()
+    // {
+    //     return _ => true;
+    // }
 
     public IReadOnlyList<OperationEntity> GetAllOperations(Guid transactionId)
     {

@@ -18,26 +18,16 @@ public abstract class OperationBuilder<TOperation> :
     {
     }
 
-    public TransactionOperation Create(Guid transactionId, int sequenceNumber) =>
-        new()
-        {
-            TransactionId = transactionId,
-            OperationId = NewId.NextGuid(),
-            Name = GetName(),
-            SequenceNumber = sequenceNumber,
-            Work = DoWork(),
-            Compensation = Compensate(),
-            Config = Configure()
-        };
+    public virtual OperationConfig Configure() => OperationConfigCache.Default;
 
-    protected virtual OperationConfig Configure() => OperationConfigCache.Default;
+    public virtual string GetName() => typeof(TOperation).FullName ?? throw new InvalidOperationException();
 
-    protected virtual string GetName() => typeof(TOperation).FullName ?? throw new InvalidOperationException();
+    public Guid GetId() => NewId.NextGuid();
 
-    protected virtual Action Compensate() => () =>
+    public abstract Func<bool> DoWork();
+
+    public virtual Action OnFailure() => () =>
     {
-        // _logger.LogDebug("You forgot to add compensation logic");
+        _logger.LogInformation("You forgot to add compensation logic");
     };
-
-    protected abstract Func<bool> DoWork();
 }

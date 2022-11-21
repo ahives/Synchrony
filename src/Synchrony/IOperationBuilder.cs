@@ -1,6 +1,16 @@
 namespace Synchrony;
 
+using Configuration;
+
 public interface IOperationBuilder
 {
-    TransactionOperation Create(Guid transactionId, int sequenceNumber);
+    OperationConfig Configure();
+
+    string GetName();
+
+    Guid GetId();
+
+    Func<bool> DoWork();
+
+    Action OnFailure();
 }

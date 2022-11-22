@@ -12,5 +12,5 @@ public interface IOperationBuilder
 
     Func<bool> DoWork();
 
-    Action OnFailure();
+    Action DoOnFailure();
 }

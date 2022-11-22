@@ -26,7 +26,7 @@ public abstract class OperationBuilder<TOperation> :
 
     public abstract Func<bool> DoWork();
 
-    public virtual Action OnFailure() => () =>
+    public virtual Action DoOnFailure() => () =>
     {
         _logger.LogInformation("You forgot to add compensation logic");
     };

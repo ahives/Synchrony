@@ -69,7 +69,7 @@ public class Tests
             return () => true;
         }
 
-        public override Action OnFailure()
+        public override Action DoOnFailure()
         {
             return () =>
             {
@@ -86,7 +86,7 @@ public class Tests
             return () => true;
         }
 
-        public override Action OnFailure()
+        public override Action DoOnFailure()
         {
             return () =>
             {

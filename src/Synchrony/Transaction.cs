@@ -67,12 +67,14 @@ public sealed class Transaction :
         return this;
     }
 
-    public async Task Execute()
+    public async Task Execute(CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        
         if (!_wasConfigured)
             throw new SynchronyConfigurationException();
 
-        await _mediator.Publish<StartTransaction>(new() {TransactionId = GetTransactionId()});
+        await _mediator.Publish<StartTransaction>(new() {TransactionId = GetTransactionId()}, cancellationToken);
         
         _operations
             .ForEach(async builder =>
@@ -83,10 +85,10 @@ public sealed class Transaction :
                     TransactionId = _transactionId,
                     Name = builder.GetName(),
                     // SequenceNumber = operation.SequenceNumber
-                });
+                }, cancellationToken);
             });
 
-        (bool workSucceeded, int index) = await TryDoWork(_config);
+        (bool workSucceeded, int index) = await TryDoWork(_config, cancellationToken);
 
         if (workSucceeded)
         {
@@ -94,12 +96,12 @@ public sealed class Transaction :
             return;
         }
 
-        bool compensated = await TryDoCompensation(index, _config);
+        bool compensated = await TryDoCompensation(index, _config, cancellationToken);
         
         StopSendingNotifications();
     }
 
-    async Task<(bool, int)> TryDoWork(TransactionConfig config)
+    async Task<(bool, int)> TryDoWork(TransactionConfig config, CancellationToken cancellationToken)
     {
         // int start = _persistence.GetStartOperation(_transactionId);
 
@@ -116,41 +118,42 @@ public sealed class Transaction :
                     {
                         OperationId = operation.GetId(),
                         TransactionId = _transactionId
-                    });
+                    }, cancellationToken);
                 else
                     await _mediator.Publish<OperationFailed>(new()
                     {
                         OperationId = operation.GetId(),
                         TransactionId = _transactionId
-                    });
+                    }, cancellationToken);
 
                 return success;
             });
 
         if (succeeded)
-            await _mediator.Publish<TransactionCompleted>(new() {TransactionId = _transactionId});
+            await _mediator.Publish<TransactionCompleted>(new() {TransactionId = _transactionId}, cancellationToken);
         else
-            await _mediator.Publish<TransactionFailed>(new() {TransactionId = _transactionId});
+            await _mediator.Publish<TransactionFailed>(new() {TransactionId = _transactionId}, cancellationToken);
 
         return (succeeded, index);
     }
 
     async Task<bool> TryDoCompensation(
         int index,
-        TransactionConfig config)
+        TransactionConfig config,
+        CancellationToken cancellationToken)
     {
         _operations.ForEach(index, async operation =>
         {
             // _logger.LogInformation("Compensating operation {OperationSequenceNumber}", operation.SequenceNumber);
             // Console.WriteLine($"Compensating operation {operation.SequenceNumber}");
 
-            operation.OnFailure().Invoke();
+            operation.DoOnFailure().Invoke();
 
             await _mediator.Publish<RequestCompensation>(new()
             {
                 OperationId = operation.GetId(),
                 TransactionId = _transactionId
-            });
+            }, cancellationToken);
         });
 
         return true;

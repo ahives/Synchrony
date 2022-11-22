@@ -4,7 +4,7 @@ using Configuration;
 
 public interface ITransaction
 {
-    Task Execute();
+    Task Execute(CancellationToken cancellationToken = default);
 
     ITransaction AddOperations(IOperationBuilder builder, params IOperationBuilder[] builders);
 

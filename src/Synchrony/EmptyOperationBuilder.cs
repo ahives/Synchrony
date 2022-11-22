@@ -5,5 +5,5 @@ internal class EmptyOperationBuilder :
 {
     public override Func<bool> DoWork() => () => false;
 
-    public override Action OnFailure() => () => { };
+    public override Action DoOnFailure() => () => { };
 }

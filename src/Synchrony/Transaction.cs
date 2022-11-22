@@ -94,7 +94,7 @@ public sealed class Transaction :
             return;
         }
 
-        bool compensated = await TryDoCompensation(_transactionId, index, _config);
+        bool compensated = await TryDoCompensation(index, _config);
         
         StopSendingNotifications();
     }
@@ -136,7 +136,6 @@ public sealed class Transaction :
     }
 
     async Task<bool> TryDoCompensation(
-        Guid transactionId,
         int index,
         TransactionConfig config)
     {
@@ -150,7 +149,7 @@ public sealed class Transaction :
             await _mediator.Publish<RequestCompensation>(new()
             {
                 OperationId = operation.GetId(),
-                TransactionId = transactionId
+                TransactionId = _transactionId
             });
         });
 

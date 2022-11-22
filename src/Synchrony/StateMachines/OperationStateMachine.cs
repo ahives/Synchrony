@@ -72,27 +72,3 @@ public class OperationStateMachine :
         Event(() => CompensationRequested, e => e.CorrelateById(context => context.Message.OperationId));
     }
 }
-
-public class InitActivity :
-    IStateMachineActivity<OperationState, StartOperation>
-{
-    public void Probe(ProbeContext context)
-    {
-        throw new NotImplementedException();
-    }
-
-    public void Accept(StateMachineVisitor visitor)
-    {
-        throw new NotImplementedException();
-    }
-
-    public async Task Execute(BehaviorContext<OperationState, StartOperation> context, IBehavior<OperationState, StartOperation> next)
-    {
-        await next.Execute(context).ConfigureAwait(false);
-    }
-
-    public Task Faulted<TException>(BehaviorExceptionContext<OperationState, StartOperation, TException> context, IBehavior<OperationState, StartOperation> next) where TException : Exception
-    {
-        throw new NotImplementedException();
-    }
-}

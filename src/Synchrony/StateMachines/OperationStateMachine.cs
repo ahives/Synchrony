@@ -31,9 +31,10 @@ public class OperationStateMachine :
 
         During(Pending,
             When(OperationCompleted)
-                // .Then(x => Console.WriteLine($"Operation Id {x.CorrelationId} completed"))
+                .Then(x => Console.WriteLine($"Operation Id {x.CorrelationId} completed"))
                 .TransitionTo(Completed),
             When(OperationFailed)
+                .Then(x => Console.WriteLine($"Operation Id {x.CorrelationId} failed"))
                 .TransitionTo(Failed));
 
         During(Failed,

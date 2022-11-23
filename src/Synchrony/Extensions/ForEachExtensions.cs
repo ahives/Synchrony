@@ -4,31 +4,41 @@ using CommunityToolkit.Diagnostics;
 
 internal static class ForEachExtensions
 {
-    internal static void ForEach<T>(this List<T> list, int start, Action<T> action)
-    {
-        Guard.IsNotNull(list);
-        Guard.IsNotNull(action);
-
-        for (int i = start; i >= 0; i--)
-            action(list[i]);
-    }
-
-    internal static async Task<(bool success, int index)> ForEach(
-        this List<IOperationBuilder> operations,
+    internal static async Task<bool> ForEach(
+        this List<IOperationBuilder> builders,
         int start,
-        Func<IOperationBuilder, int, Task<bool>> function)
+        Func<IOperationBuilder, Task<bool>> function)
     {
-        Guard.IsNotNull(operations);
+        Guard.IsNotNull(builders);
         Guard.IsNotNull(function);
 
         bool succeed = true;
-        for (int i = start; i < operations.Count; i++)
+        for (int i = start; i >= 0; i--)
         {
-            succeed &= await function(operations[i], i);
+            succeed &= await function(builders[i]);
             if (!succeed)
-                return (succeed, i);
+                return false;
         }
 
-        return (succeed, -1);
+        return true;
+    }
+
+    internal static async Task<(bool success, int index)> ForEach(
+        this List<IOperationBuilder> builders,
+        int start,
+        Func<IOperationBuilder, int, Task<bool>> function)
+    {
+        Guard.IsNotNull(builders);
+        Guard.IsNotNull(function);
+
+        bool succeed = true;
+        for (int i = start; i < builders.Count; i++)
+        {
+            succeed &= await function(builders[i], i);
+            if (!succeed)
+                return (false, i);
+        }
+
+        return (true, -1);
     }
 }

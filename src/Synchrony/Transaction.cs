@@ -119,7 +119,7 @@ public sealed class Transaction :
         // _logger.LogInformation("Executing operation {OperationSequenceNumber}", builder.SequenceNumber);
         // Console.WriteLine($"Executing operation {builder.SequenceNumber}");
 
-        await _mediator.Publish<StartOperation>(new()
+        await _mediator.Publish<RequestExecuteOperation>(new()
         {
             OperationId = builder.GetId(),
             TransactionId = _transactionId,
@@ -127,22 +127,29 @@ public sealed class Transaction :
             // SequenceNumber = builder.SequenceNumber
         }, cancellationToken);
 
-        bool success = builder.DoWork().Invoke();
+        try
+        {
+            bool success = builder.DoWork().Invoke();
 
-        if (success)
-            await _mediator.Publish<OperationCompleted>(new()
-            {
-                OperationId = builder.GetId(),
-                TransactionId = _transactionId
-            }, cancellationToken);
-        else
-            await _mediator.Publish<OperationFailed>(new()
-            {
-                OperationId = builder.GetId(),
-                TransactionId = _transactionId,
-            }, cancellationToken);
+            if (success)
+                await _mediator.Publish<OperationCompleted>(new()
+                {
+                    OperationId = builder.GetId(),
+                    TransactionId = _transactionId
+                }, cancellationToken);
+            else
+                await _mediator.Publish<OperationFailed>(new()
+                {
+                    OperationId = builder.GetId(),
+                    TransactionId = _transactionId,
+                }, cancellationToken);
 
-        return success;
+            return success;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
 

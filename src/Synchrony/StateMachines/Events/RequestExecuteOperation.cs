@@ -1,6 +1,6 @@
 namespace Synchrony.StateMachines.Events;
 
-public class StartOperation
+public class RequestExecuteOperation
 {
     public Guid OperationId { get; init; }
     public Guid TransactionId { get; init; }

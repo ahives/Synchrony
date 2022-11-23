@@ -12,7 +12,7 @@ public class OperationStateMachine :
     public State Compensated { get; }
     public State Pending { get; }
     
-    public Event<StartOperation> StartOperationRequest { get; }
+    public Event<RequestExecuteOperation> ExecuteOperationRequest { get; }
     public Event<OperationCompleted> OperationCompleted { get; }
     public Event<OperationFailed> OperationFailed { get; }
     public Event<RequestCompensation> CompensationRequested { get; }
@@ -24,7 +24,7 @@ public class OperationStateMachine :
         InstanceState(x => x.State, Pending, Completed, Failed, Compensated);
 
         Initially(
-            When(StartOperationRequest)
+            When(ExecuteOperationRequest)
                 // .Activity(x => x.OfType<InitActivity>())
                 .If(IsExecutable, y => y.TransitionTo(Pending)));
                 // .TransitionTo(Pending));
@@ -42,12 +42,12 @@ public class OperationStateMachine :
                 .TransitionTo(Compensated));
 
         During(Completed,
-            Ignore(StartOperationRequest),
+            Ignore(ExecuteOperationRequest),
             Ignore(OperationCompleted),
             Ignore(OperationFailed));
     }
 
-    bool IsExecutable(BehaviorContext<OperationState,StartOperation> operation)
+    bool IsExecutable(BehaviorContext<OperationState,RequestExecuteOperation> operation)
     {
         if (operation.Message.Name != operation.Saga.Name)
             return true;
@@ -67,7 +67,7 @@ public class OperationStateMachine :
 
     void ConfigureEvents()
     {
-        Event(() => StartOperationRequest, e => e.CorrelateById(context => context.Message.OperationId));
+        Event(() => ExecuteOperationRequest, e => e.CorrelateById(context => context.Message.OperationId));
         Event(() => OperationCompleted, e => e.CorrelateById(context => context.Message.OperationId));
         Event(() => OperationFailed, e => e.CorrelateById(context => context.Message.OperationId));
         Event(() => CompensationRequested, e => e.CorrelateById(context => context.Message.OperationId));

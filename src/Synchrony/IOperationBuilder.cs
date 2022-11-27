@@ -10,7 +10,7 @@ public interface IOperationBuilder
 
     Guid GetId();
 
-    Func<bool> DoWork();
+    Task<bool> DoWork();
 
-    Action DoOnFailure();
+    Task<bool> DoCompensation();
 }

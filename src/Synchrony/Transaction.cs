@@ -96,60 +96,84 @@ public sealed class Transaction :
         // _logger.LogInformation("Compensating operation {OperationSequenceNumber}", builder.SequenceNumber);
         // Console.WriteLine($"Compensating operation {builder.SequenceNumber}");
 
-        await _mediator.Publish<RequestCompensation>(new()
-        {
-            OperationId = builder.GetId(),
-            TransactionId = _transactionId
-        }, cancellationToken);
+        return await _mediator
+            .Publish<RequestCompensation>(new()
+            {
+                OperationId = builder.GetId(),
+                TransactionId = _transactionId
+            }, cancellationToken)
+            .ContinueWith(async _ =>
+            {
+                try
+                {
+                    var compensationTask = Task.Run(builder.DoCompensation, cancellationToken);
 
-        try
-        {
-            builder.DoOnFailure().Invoke();
-        }
-        catch
-        {
-            return false;
-        }
-
-        return true;
+                    return await compensationTask
+                        .ContinueWith(async task => task.Result, cancellationToken)
+                        .Unwrap();
+                }
+                catch
+                {
+                    return false;
+                }
+            }, cancellationToken)
+            .Unwrap();
     }
 
     async Task<bool> TryDoWork(IOperationBuilder builder, TransactionConfig config, CancellationToken cancellationToken)
     {
-        // _logger.LogInformation("Executing operation {OperationSequenceNumber}", builder.SequenceNumber);
+        _logger.LogInformation("Executing operation {Name}", builder.GetName());
         // Console.WriteLine($"Executing operation {builder.SequenceNumber}");
 
-        await _mediator.Publish<RequestExecuteOperation>(new()
-        {
-            OperationId = builder.GetId(),
-            TransactionId = _transactionId,
-            Name = builder.GetName(),
-            // SequenceNumber = builder.SequenceNumber
-        }, cancellationToken);
-
-        try
-        {
-            bool success = builder.DoWork().Invoke();
-
-            if (success)
-                await _mediator.Publish<OperationCompleted>(new()
+        return await _mediator
+            .Publish<RequestExecuteOperation>(new()
+            {
+                OperationId = builder.GetId(),
+                TransactionId = _transactionId,
+                Name = builder.GetName(),
+            }, cancellationToken)
+            .ContinueWith(async _ =>
+            {
+                try
                 {
-                    OperationId = builder.GetId(),
-                    TransactionId = _transactionId
-                }, cancellationToken);
-            else
-                await _mediator.Publish<OperationFailed>(new()
-                {
-                    OperationId = builder.GetId(),
-                    TransactionId = _transactionId,
-                }, cancellationToken);
+                    var workTask = Task.Run(builder.DoWork, cancellationToken);
 
-            return success;
-        }
-        catch
-        {
-            return false;
-        }
+                    return await workTask
+                        .ContinueWith(async task =>
+                        {
+                            if (task.Result)
+                            {
+                                await _mediator.Publish<OperationCompleted>(new()
+                                {
+                                    OperationId = builder.GetId(),
+                                    TransactionId = _transactionId
+                                }, cancellationToken);
+                            }
+                            else
+                            {
+                                await _mediator.Publish<OperationFailed>(new()
+                                {
+                                    OperationId = builder.GetId(),
+                                    TransactionId = _transactionId,
+                                }, cancellationToken);
+                            }
+
+                            return task.Result;
+                        }, cancellationToken)
+                        .Unwrap();
+                }
+                catch
+                {
+                    await _mediator.Publish<OperationFailed>(new()
+                    {
+                        OperationId = builder.GetId(),
+                        TransactionId = _transactionId,
+                    }, cancellationToken);
+
+                    return false;
+                }
+            }, cancellationToken)
+            .Unwrap();
     }
 
 

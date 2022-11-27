@@ -24,10 +24,12 @@ public abstract class OperationBuilder<TOperation> :
 
     public Guid GetId() => NewId.NextGuid();
 
-    public abstract Func<bool> DoWork();
+    public abstract Task<bool> DoWork();
 
-    public virtual Action DoOnFailure() => () =>
+    public virtual async Task<bool> DoCompensation()
     {
         _logger.LogInformation("You forgot to add compensation logic");
-    };
+        
+        return await Task.FromResult(true);
+    }
 }

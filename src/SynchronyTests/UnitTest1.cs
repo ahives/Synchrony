@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using MassTransit;
 using Microsoft.Extensions.Configuration;
 using Synchrony.StateMachines;
@@ -25,6 +26,7 @@ public class Tests
         _services = new ServiceCollection()
             .AddSingleton<IPersistenceProvider, TestPersistenceProvider>()
             // .AddScoped(_ => configuration)
+            .AddSingleton<ITransactionCache, TransactionCache>()
             .AddTransient<ITransaction, Transaction>()
             .AddMediator(x =>
             {
@@ -64,43 +66,41 @@ public class Tests
     class Operation1 :
         OperationBuilder<Operation1>
     {
-        public override Func<bool> DoWork()
+        public override async Task<bool> DoWork()
         {
-            return () => true;
+            return await Task.FromResult(true);
         }
 
-        public override Action DoOnFailure()
+        public override async Task<bool> DoCompensation()
         {
-            return () =>
-            {
-                Console.WriteLine("Something went wrong in Operation 1");
-            };
+            Console.WriteLine("Something went wrong in Operation 1");
+            
+            return await Task.FromResult(true);
         }
     }
 
     class Operation2 :
         OperationBuilder<Operation2>
     {
-        public override Func<bool> DoWork()
+        public override async Task<bool> DoWork()
         {
-            return () => true;
+            return await Task.FromResult(true);
         }
 
-        public override Action DoOnFailure()
+        public override async Task<bool> DoCompensation()
         {
-            return () =>
-            {
-                Console.WriteLine("Something went wrong in Operation 2");
-            };
+            Console.WriteLine("Something went wrong in Operation 2");
+            
+            return await Task.FromResult(true);
         }
     }
 
     class Operation3 :
         OperationBuilder<Operation3>
     {
-        public override Func<bool> DoWork()
+        public override async Task<bool> DoWork()
         {
-            return () => true;
+            return await Task.FromResult(true);
         }
     }
 
@@ -118,7 +118,7 @@ public class Tests
 
         public void OnNext(TransactionContext value)
         {
-            Console.WriteLine($"Transaction Observer: Transaction {value.TransactionId} is currently in state {value.State}");
+            Console.WriteLine($"Transaction Observer: Transaction {value.OperationId} is currently in state {value.State}");
         }
     }
 }

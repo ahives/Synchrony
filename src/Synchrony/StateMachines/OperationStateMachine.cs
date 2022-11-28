@@ -3,6 +3,7 @@ namespace Synchrony.StateMachines;
 using MassTransit;
 using Events;
 using Sagas;
+using Activities;
 
 public class OperationStateMachine :
     MassTransitStateMachine<OperationState>
@@ -25,9 +26,7 @@ public class OperationStateMachine :
 
         Initially(
             When(ExecuteOperationRequest)
-                // .Activity(x => x.OfType<InitActivity>())
-                .If(IsExecutable, y => y.TransitionTo(Pending)));
-                // .TransitionTo(Pending));
+                .Activity(x => x.OfType<ExecuteOperationActivity>()));
 
         During(Pending,
             When(OperationCompleted)
@@ -45,24 +44,6 @@ public class OperationStateMachine :
             Ignore(ExecuteOperationRequest),
             Ignore(OperationCompleted),
             Ignore(OperationFailed));
-    }
-
-    bool IsExecutable(BehaviorContext<OperationState,RequestExecuteOperation> operation)
-    {
-        if (operation.Message.Name != operation.Saga.Name)
-            return true;
-        
-        switch ((TransactionStates)operation.Saga.State)
-        {
-            case TransactionStates.New:
-            case TransactionStates.Pending:
-                return true;
-            case TransactionStates.Failed:
-            case TransactionStates.Completed:
-            case TransactionStates.Compensated:
-            default:
-                return false;
-        }
     }
 
     void ConfigureEvents()

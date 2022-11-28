@@ -16,14 +16,16 @@ public sealed class Transaction :
     private readonly IReadOnlyList<OperationEntity> _operationsInDatabase;
     private readonly Guid _transactionId;
     private readonly IMediator _mediator;
+    private readonly ITransactionCache _cache;
     private readonly ILogger<Transaction> _logger;
     private readonly List<IOperationBuilder> _operations;
     private TransactionConfig _config;
     private bool _wasConfigured;
 
-    public Transaction(IMediator mediator, ILogger<Transaction> logger)
+    public Transaction(IMediator mediator, ITransactionCache cache, ILogger<Transaction> logger)
     {
         _mediator = mediator;
+        _cache = cache;
         _logger = logger;
         _config = SynchronyConfigCache.Default;
         _operations = new List<IOperationBuilder>();
@@ -60,6 +62,8 @@ public sealed class Transaction :
         return _transactionId;
     }
 
+    public IReadOnlyList<IObserver<TransactionContext>> GetObservers() => _observers;
+
     public ITransaction AddOperations(IOperationBuilder builder, params IOperationBuilder[] builders)
     {
         _operations.AddRange(builders.Prepend(builder).ToList());
@@ -74,26 +78,36 @@ public sealed class Transaction :
         if (!_wasConfigured)
             throw new SynchronyConfigurationException();
 
-        await _mediator.Publish<StartTransaction>(new() {TransactionId = GetTransactionId()}, cancellationToken);
-        
-        (bool workSucceeded, int index) =
-            await _operations.ForEach(0, async (builder, _) => await TryDoWork(builder, _config, cancellationToken));
+        await Task.Run(() => _cache.Store(this), cancellationToken)
+            .ContinueWith(async _ =>
+            {
+                await _mediator
+                    .Publish<StartTransaction>(new() {TransactionId = GetTransactionId()}, cancellationToken)
+                    .ContinueWith(async x =>
+                    {
+                        (bool workSucceeded, int index) =
+                            await _operations.ForEach(0,
+                                async (builder, _) => await TryDoWork(builder, _config, cancellationToken));
 
-        if (workSucceeded)
-        {
-            StopSendingNotifications();
-            return;
-        }
+                        if (workSucceeded)
+                        {
+                            StopSendingNotifications();
+                            return;
+                        }
 
-        bool compensated = await _operations.ForEach(index,
-            async builder => await TryDoCompensation(builder, _config, cancellationToken));
+                        bool compensated = await _operations.ForEach(index,
+                            async builder => await TryDoCompensation(builder, _config, cancellationToken));
 
-        StopSendingNotifications();
+                        StopSendingNotifications();
+                    }, cancellationToken)
+                    .Unwrap();
+            }, cancellationToken)
+            .Unwrap();
     }
 
     async Task<bool> TryDoCompensation(IOperationBuilder builder, TransactionConfig config, CancellationToken cancellationToken)
     {
-        // _logger.LogInformation("Compensating operation {OperationSequenceNumber}", builder.SequenceNumber);
+        _logger.LogInformation("Compensating operation {Name}", builder.GetName());
         // Console.WriteLine($"Compensating operation {builder.SequenceNumber}");
 
         return await _mediator
@@ -198,22 +212,11 @@ public sealed class Transaction :
         
         public void Retry(TransactionRetry retry = TransactionRetry.None) => TransactionRetry = retry;
 
-        public void Subscribe(object observer, params object[] observers)
+        public void Subscribe(IObserver<TransactionContext> observer, params IObserver<TransactionContext>[] observers)
         {
-            Subscribe(observer);
+            _subscribers.Add(observer);
             for (int i = 0; i < observers.Length; i++)
-                Subscribe(observers[i]);
-        }
-
-        void Subscribe(object observer)
-        {
-            if (!observer.GetType().IsAssignableTo(typeof(IObserver<TransactionContext>)))
-                return;
-
-            if (observer is not IObserver<TransactionContext> op)
-                return;
-                
-            _subscribers.Add(op);
+                _subscribers.Add(observers[i]);
         }
     }
 }

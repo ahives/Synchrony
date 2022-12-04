@@ -157,19 +157,23 @@ public sealed class Transaction :
                         {
                             if (task.Result)
                             {
-                                await _mediator.Publish<OperationCompleted>(new()
-                                {
-                                    OperationId = builder.GetId(),
-                                    TransactionId = _transactionId
-                                }, cancellationToken);
+                                _mediator.Publish<OperationCompleted>(new()
+                                    {
+                                        OperationId = builder.GetId(),
+                                        TransactionId = _transactionId
+                                    }, cancellationToken)
+                                    .GetAwaiter()
+                                    .GetResult();
                             }
                             else
                             {
-                                await _mediator.Publish<OperationFailed>(new()
-                                {
-                                    OperationId = builder.GetId(),
-                                    TransactionId = _transactionId,
-                                }, cancellationToken);
+                                _mediator.Publish<OperationFailed>(new()
+                                    {
+                                        OperationId = builder.GetId(),
+                                        TransactionId = _transactionId,
+                                    }, cancellationToken)
+                                    .GetAwaiter()
+                                    .GetResult();
                             }
 
                             return task.Result;
@@ -178,11 +182,13 @@ public sealed class Transaction :
                 }
                 catch
                 {
-                    await _mediator.Publish<OperationFailed>(new()
-                    {
-                        OperationId = builder.GetId(),
-                        TransactionId = _transactionId,
-                    }, cancellationToken);
+                    _mediator.Publish<OperationFailed>(new()
+                        {
+                            OperationId = builder.GetId(),
+                            TransactionId = _transactionId,
+                        }, cancellationToken)
+                        .GetAwaiter()
+                        .GetResult();
 
                     return false;
                 }

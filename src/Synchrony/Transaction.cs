@@ -85,17 +85,17 @@ public sealed class Transaction :
                     .Publish<StartTransaction>(new() {TransactionId = GetTransactionId()}, cancellationToken)
                     .ContinueWith(async x =>
                     {
-                        (bool workSucceeded, int index) =
-                            await _operations.ForEach(0,
+                        (bool succeeded, int index) =
+                            await _operations.ExecuteEach(0,
                                 async (builder, _) => await TryExecute(builder, _config, cancellationToken));
 
-                        if (workSucceeded)
+                        if (succeeded)
                         {
                             StopSendingNotifications();
                             return;
                         }
 
-                        bool compensated = await _operations.ForEach(index,
+                        bool compensated = await _operations.CompensateEach(index,
                             async builder => await TryCompensate(builder, _config, cancellationToken));
 
                         StopSendingNotifications();

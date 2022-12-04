@@ -34,7 +34,7 @@ public class ExecuteOperationActivity :
             _cache
                 .Get(context.Message.TransactionId)
                 .GetObservers()
-                .SendToObservers(
+                .SendToSubscribers(
                     new()
                     {
                         TransactionId = context.Message.TransactionId,

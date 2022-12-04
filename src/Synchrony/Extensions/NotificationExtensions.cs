@@ -2,7 +2,7 @@ namespace Synchrony.Extensions;
 
 public static class NotificationExtensions
 {
-    public static void SendToObservers(this IReadOnlyList<IObserver<TransactionContext>> observers, TransactionContext context) =>
+    public static void SendToSubscribers(this IReadOnlyList<IObserver<TransactionContext>> observers, TransactionContext context) =>
         observers.ForEach(observer =>
         {
             switch (context.State)

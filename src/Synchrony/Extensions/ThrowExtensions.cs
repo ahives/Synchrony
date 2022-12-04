@@ -29,7 +29,7 @@ internal static class ThrowExtensions
         bool success = function.Invoke(input);
         var context = contextBuilder.Invoke(input);
 
-        observers.SendToObservers(context);
+        observers.SendToSubscribers(context);
 
         if (!success)
             throw new TransactionPersistenceException();
@@ -45,7 +45,7 @@ internal static class ThrowExtensions
         bool success = function.Invoke(input, state);
         var context = contextBuilder.Invoke(input);
 
-        observers.SendToObservers(context);
+        observers.SendToSubscribers(context);
 
         if (!success)
             throw new TransactionPersistenceException();

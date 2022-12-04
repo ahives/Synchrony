@@ -66,12 +66,12 @@ public class Tests
     class Operation1 :
         OperationBuilder<Operation1>
     {
-        public override async Task<bool> DoWork()
+        public override async Task<bool> Execute()
         {
             return await Task.FromResult(true);
         }
 
-        public override async Task<bool> DoCompensation()
+        public override async Task<bool> Compensate()
         {
             Console.WriteLine("Something went wrong in Operation 1");
             
@@ -82,12 +82,12 @@ public class Tests
     class Operation2 :
         OperationBuilder<Operation2>
     {
-        public override async Task<bool> DoWork()
+        public override async Task<bool> Execute()
         {
             return await Task.FromResult(true);
         }
 
-        public override async Task<bool> DoCompensation()
+        public override async Task<bool> Compensate()
         {
             Console.WriteLine("Something went wrong in Operation 2");
             
@@ -98,7 +98,7 @@ public class Tests
     class Operation3 :
         OperationBuilder<Operation3>
     {
-        public override async Task<bool> DoWork()
+        public override async Task<bool> Execute()
         {
             return await Task.FromResult(true);
         }

@@ -24,9 +24,9 @@ public abstract class OperationBuilder<TOperation> :
 
     public Guid GetId() => NewId.NextGuid();
 
-    public abstract Task<bool> DoWork();
+    public abstract Task<bool> Execute();
 
-    public virtual async Task<bool> DoCompensation()
+    public virtual async Task<bool> Compensate()
     {
         _logger.LogInformation("You forgot to add compensation logic");
         

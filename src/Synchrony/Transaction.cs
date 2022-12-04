@@ -87,7 +87,7 @@ public sealed class Transaction :
                     {
                         (bool workSucceeded, int index) =
                             await _operations.ForEach(0,
-                                async (builder, _) => await TryDoWork(builder, _config, cancellationToken));
+                                async (builder, _) => await TryExecute(builder, _config, cancellationToken));
 
                         if (workSucceeded)
                         {
@@ -96,7 +96,7 @@ public sealed class Transaction :
                         }
 
                         bool compensated = await _operations.ForEach(index,
-                            async builder => await TryDoCompensation(builder, _config, cancellationToken));
+                            async builder => await TryCompensate(builder, _config, cancellationToken));
 
                         StopSendingNotifications();
                     }, cancellationToken)
@@ -105,7 +105,7 @@ public sealed class Transaction :
             .Unwrap();
     }
 
-    async Task<bool> TryDoCompensation(IOperationBuilder builder, TransactionConfig config, CancellationToken cancellationToken)
+    async Task<bool> TryCompensate(IOperationBuilder builder, TransactionConfig config, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Compensating operation {Name}", builder.GetName());
         // Console.WriteLine($"Compensating operation {builder.SequenceNumber}");
@@ -120,7 +120,7 @@ public sealed class Transaction :
             {
                 try
                 {
-                    var compensationTask = Task.Run(builder.DoCompensation, cancellationToken);
+                    var compensationTask = Task.Run(builder.Compensate, cancellationToken);
 
                     return await compensationTask
                         .ContinueWith(async task => task.Result, cancellationToken)
@@ -134,7 +134,7 @@ public sealed class Transaction :
             .Unwrap();
     }
 
-    async Task<bool> TryDoWork(IOperationBuilder builder, TransactionConfig config, CancellationToken cancellationToken)
+    async Task<bool> TryExecute(IOperationBuilder builder, TransactionConfig config, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Executing operation {Name}", builder.GetName());
         // Console.WriteLine($"Executing operation {builder.SequenceNumber}");
@@ -150,7 +150,7 @@ public sealed class Transaction :
             {
                 try
                 {
-                    var workTask = Task.Run(builder.DoWork, cancellationToken);
+                    var workTask = Task.Run(builder.Execute, cancellationToken);
 
                     return await workTask
                         .ContinueWith(async task =>

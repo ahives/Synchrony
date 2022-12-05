@@ -81,12 +81,14 @@ public sealed class Transaction :
         await Task.Run(() => _cache.Store(this), cancellationToken)
             .ContinueWith(async _ =>
             {
+                int start = 0;
+                
                 await _mediator
                     .Publish<StartTransaction>(new() {TransactionId = GetTransactionId()}, cancellationToken)
                     .ContinueWith(async x =>
                     {
                         (bool succeeded, int index) =
-                            await _operations.ExecuteEach(0,
+                            await _operations.ExecuteFrom(start,
                                 async (builder, _) => await TryExecute(builder, _config, cancellationToken));
 
                         if (succeeded)
@@ -95,7 +97,7 @@ public sealed class Transaction :
                             return;
                         }
 
-                        bool compensated = await _operations.CompensateEach(index,
+                        bool compensated = await _operations.CompensateFrom(index,
                             async builder => await TryCompensate(builder, _config, cancellationToken));
 
                         StopSendingNotifications();

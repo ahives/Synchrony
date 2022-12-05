@@ -4,7 +4,7 @@ using CommunityToolkit.Diagnostics;
 
 internal static class TransactionExtensions
 {
-    internal static async Task<(bool success, int index)> ExecuteEach(
+    internal static async Task<(bool success, int index)> ExecuteFrom(
         this List<IOperationBuilder> builders,
         int start,
         Func<IOperationBuilder, int, Task<bool>> function)
@@ -23,7 +23,7 @@ internal static class TransactionExtensions
         return (true, -1);
     }
 
-    internal static async Task<bool> CompensateEach(
+    internal static async Task<bool> CompensateFrom(
         this List<IOperationBuilder> builders,
         int start,
         Func<IOperationBuilder, Task<bool>> function)

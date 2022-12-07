@@ -89,7 +89,7 @@ public sealed class Transaction :
                     {
                         (bool succeeded, int index) =
                             await _operations.ExecuteFrom(start,
-                                async (builder, _) => await TryExecute(builder, _config, cancellationToken));
+                                async (operation, _) => await TryExecute(operation, _config, cancellationToken));
 
                         if (succeeded)
                         {
@@ -98,7 +98,7 @@ public sealed class Transaction :
                         }
 
                         bool compensated = await _operations.CompensateFrom(index,
-                            async builder => await TryCompensate(builder, _config, cancellationToken));
+                            async operation => await TryCompensate(operation, _config, cancellationToken));
 
                         StopSendingNotifications();
                     }, cancellationToken)
@@ -110,7 +110,7 @@ public sealed class Transaction :
     async Task<bool> TryCompensate(IOperation operation, TransactionConfig config, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Compensating operation {Name}", operation.GetName());
-        // Console.WriteLine($"Compensating operation {builder.SequenceNumber}");
+        // Console.WriteLine($"Compensating operation {operation.SequenceNumber}");
 
         return await _mediator
             .Publish<RequestCompensation>(new()
@@ -139,7 +139,7 @@ public sealed class Transaction :
     async Task<bool> TryExecute(IOperation operation, TransactionConfig config, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Executing operation {Name}", operation.GetName());
-        // Console.WriteLine($"Executing operation {builder.SequenceNumber}");
+        // Console.WriteLine($"Executing operation {operation.SequenceNumber}");
 
         return await _mediator
             .Publish<RequestExecuteOperation>(new()
@@ -159,23 +159,19 @@ public sealed class Transaction :
                         {
                             if (task.Result)
                             {
-                                _mediator.Publish<OperationCompleted>(new()
+                                await _mediator.Publish<OperationCompleted>(new()
                                     {
                                         OperationId = operation.GetId(),
                                         TransactionId = _transactionId
-                                    }, cancellationToken)
-                                    .GetAwaiter()
-                                    .GetResult();
+                                    }, cancellationToken);
                             }
                             else
                             {
-                                _mediator.Publish<OperationFailed>(new()
+                                await _mediator.Publish<OperationFailed>(new()
                                     {
                                         OperationId = operation.GetId(),
                                         TransactionId = _transactionId,
-                                    }, cancellationToken)
-                                    .GetAwaiter()
-                                    .GetResult();
+                                    }, cancellationToken);
                             }
 
                             return task.Result;
@@ -184,13 +180,11 @@ public sealed class Transaction :
                 }
                 catch
                 {
-                    _mediator.Publish<OperationFailed>(new()
+                    await _mediator.Publish<OperationFailed>(new()
                         {
                             OperationId = operation.GetId(),
                             TransactionId = _transactionId,
-                        }, cancellationToken)
-                        .GetAwaiter()
-                        .GetResult();
+                        }, cancellationToken);
 
                     return false;
                 }

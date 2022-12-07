@@ -2,7 +2,7 @@ namespace Synchrony;
 
 using Configuration;
 
-public interface IOperationBuilder
+public interface IOperation
 {
     OperationConfig Configure();
 

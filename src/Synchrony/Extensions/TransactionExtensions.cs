@@ -5,9 +5,9 @@ using CommunityToolkit.Diagnostics;
 internal static class TransactionExtensions
 {
     internal static async Task<(bool success, int index)> ExecuteFrom(
-        this List<IOperationBuilder> builders,
+        this List<IOperation> builders,
         int start,
-        Func<IOperationBuilder, int, Task<bool>> function)
+        Func<IOperation, int, Task<bool>> function)
     {
         Guard.IsNotNull(builders);
         Guard.IsNotNull(function);
@@ -24,9 +24,9 @@ internal static class TransactionExtensions
     }
 
     internal static async Task<bool> CompensateFrom(
-        this List<IOperationBuilder> builders,
+        this List<IOperation> builders,
         int start,
-        Func<IOperationBuilder, Task<bool>> function)
+        Func<IOperation, Task<bool>> function)
     {
         Guard.IsNotNull(builders);
         Guard.IsNotNull(function);

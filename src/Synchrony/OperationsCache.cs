@@ -2,5 +2,5 @@ namespace Synchrony;
 
 internal static class OperationsCache
 {
-    public static readonly IOperationBuilder Empty = new EmptyOperationBuilder();
+    public static readonly IOperation Empty = new EmptyOperationBuilder();
 }

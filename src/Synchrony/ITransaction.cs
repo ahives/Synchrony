@@ -6,7 +6,7 @@ public interface ITransaction
 {
     Task Execute(CancellationToken cancellationToken = default);
 
-    ITransaction AddOperations(IOperationBuilder builder, params IOperationBuilder[] builders);
+    ITransaction AddOperations(IOperation operation, params IOperation[] operations);
 
     ITransaction Configure(Action<TransactionConfigurator> configurator);
 

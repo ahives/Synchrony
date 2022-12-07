@@ -64,7 +64,7 @@ public class Tests
     }
 
     class Operation1 :
-        OperationBuilder<Operation1>
+        Operation<Operation1>
     {
         public override async Task<bool> Execute()
         {
@@ -80,7 +80,7 @@ public class Tests
     }
 
     class Operation2 :
-        OperationBuilder<Operation2>
+        Operation<Operation2>
     {
         public override async Task<bool> Execute()
         {
@@ -96,7 +96,7 @@ public class Tests
     }
 
     class Operation3 :
-        OperationBuilder<Operation3>
+        Operation<Operation3>
     {
         public override async Task<bool> Execute()
         {

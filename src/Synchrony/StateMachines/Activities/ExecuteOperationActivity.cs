@@ -8,12 +8,12 @@ using Sagas;
 public class ExecuteOperationActivity :
     IStateMachineActivity<OperationState, RequestExecuteOperation>
 {
+    private readonly OperationStateMachine _stateMachine;
     private readonly ITransactionCache _cache;
-    
-    public State Pending { get; }
 
-    public ExecuteOperationActivity(ITransactionCache cache)
+    public ExecuteOperationActivity(OperationStateMachine stateMachine, ITransactionCache cache)
     {
+        _stateMachine = stateMachine;
         _cache = cache;
     }
 
@@ -42,7 +42,7 @@ public class ExecuteOperationActivity :
                         State = TransactionStates.New
                     });
 
-            await context.TransitionToState(Pending);
+            await context.TransitionToState(_stateMachine.Pending);
         }
 
         await next.Execute(context).ConfigureAwait(false);

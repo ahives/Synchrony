@@ -30,15 +30,13 @@ public class OperationStateMachine :
 
         During(Pending,
             When(OperationCompleted)
-                .Then(x => Console.WriteLine($"Operation Id {x.CorrelationId} completed"))
-                .TransitionTo(Completed),
+                .Activity(x => x.OfType<CompleteOperationActivity>()),
             When(OperationFailed)
-                .Then(x => Console.WriteLine($"Operation Id {x.CorrelationId} failed"))
-                .TransitionTo(Failed));
+                .Activity(x => x.OfType<FailedOperationActivity>()));
 
         During(Failed,
             When(CompensationRequested)
-                .TransitionTo(Compensated));
+                .Activity(x => x.OfType<CompensatedOperationActivity>()));
 
         During(Completed,
             Ignore(ExecuteOperationRequest),

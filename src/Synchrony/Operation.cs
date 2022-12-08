@@ -9,20 +9,20 @@ public abstract class Operation<TOperation> :
 {
     private readonly ILogger<Operation<TOperation>> _logger;
 
-    protected Operation(ILogger<Operation<TOperation>> logger)
+    public OperationMetadata Metadata { get; init; }
+
+    protected Operation(ILogger<Operation<TOperation>> logger) : this()
     {
         _logger = logger;
     }
 
     protected Operation()
     {
+        Metadata = new()
+            {Id = NewId.NextGuid(), Name = typeof(TOperation).FullName ?? throw new InvalidOperationException()};
     }
 
     public virtual OperationConfig Configure() => OperationConfigCache.Default;
-
-    public virtual string GetName() => typeof(TOperation).FullName ?? throw new InvalidOperationException();
-
-    public Guid GetId() => NewId.NextGuid();
 
     public abstract Task<bool> Execute();
 
@@ -32,7 +32,6 @@ public abstract class Operation<TOperation> :
         
         return await Task.FromResult(true);
     }
-
 }
 
 public static class Operation

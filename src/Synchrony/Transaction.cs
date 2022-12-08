@@ -109,13 +109,13 @@ public sealed class Transaction :
 
     async Task<bool> TryCompensate(IOperation operation, TransactionConfig config, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Compensating operation {Name}", operation.GetName());
+        _logger.LogInformation("Compensating operation {Name}", operation.Metadata.Name);
         // Console.WriteLine($"Compensating operation {operation.SequenceNumber}");
 
         return await _mediator
             .Publish<RequestCompensation>(new()
             {
-                OperationId = operation.GetId(),
+                OperationId = operation.Metadata.Id,
                 TransactionId = _transactionId
             }, cancellationToken)
             .ContinueWith(async _ =>
@@ -138,30 +138,30 @@ public sealed class Transaction :
 
     async Task<bool> TryExecute(IOperation operation, TransactionConfig config, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Executing operation {Name}", operation.GetName());
+        _logger.LogInformation("Executing operation {Name}", operation.Metadata.Name);
         // Console.WriteLine($"Executing operation {operation.SequenceNumber}");
 
         return await _mediator
             .Publish<RequestExecuteOperation>(new()
             {
-                OperationId = operation.GetId(),
+                OperationId = operation.Metadata.Id,
                 TransactionId = _transactionId,
-                Name = operation.GetName(),
+                Name = operation.Metadata.Name,
             }, cancellationToken)
             .ContinueWith(async _ =>
             {
                 try
                 {
-                    var workTask = Task.Run(operation.Execute, cancellationToken);
+                    var executeTask = Task.Run(operation.Execute, cancellationToken);
 
-                    return await workTask
+                    return await executeTask
                         .ContinueWith(async task =>
                         {
                             if (task.Result)
                             {
                                 await _mediator.Publish<OperationCompleted>(new()
                                     {
-                                        OperationId = operation.GetId(),
+                                        OperationId = operation.Metadata.Id,
                                         TransactionId = _transactionId
                                     }, cancellationToken);
                             }
@@ -169,7 +169,7 @@ public sealed class Transaction :
                             {
                                 await _mediator.Publish<OperationFailed>(new()
                                     {
-                                        OperationId = operation.GetId(),
+                                        OperationId = operation.Metadata.Id,
                                         TransactionId = _transactionId,
                                     }, cancellationToken);
                             }
@@ -182,7 +182,7 @@ public sealed class Transaction :
                 {
                     await _mediator.Publish<OperationFailed>(new()
                         {
-                            OperationId = operation.GetId(),
+                            OperationId = operation.Metadata.Id,
                             TransactionId = _transactionId,
                         }, cancellationToken);
 
@@ -198,7 +198,6 @@ public sealed class Transaction :
     {
         private readonly List<IObserver<TransactionContext>> _subscribers;
         
-        public bool LoggingOn { get; private set; }
         public TransactionRetry TransactionRetry { get; private set; }
         public List<IObserver<TransactionContext>> Subscribers => _subscribers;
 
@@ -209,8 +208,6 @@ public sealed class Transaction :
             
             _subscribers = new List<IObserver<TransactionContext>>();
         }
-
-        public void TurnOnLogging() => LoggingOn = true;
         
         public void Retry(TransactionRetry retry = TransactionRetry.None) => TransactionRetry = retry;
 

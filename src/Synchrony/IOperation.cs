@@ -4,11 +4,9 @@ using Configuration;
 
 public interface IOperation
 {
+    OperationMetadata Metadata { get; init; }
+    
     OperationConfig Configure();
-
-    string GetName();
-
-    Guid GetId();
 
     Task<bool> Execute();
 

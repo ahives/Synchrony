@@ -62,7 +62,7 @@ public sealed class Transaction :
         return _transactionId;
     }
 
-    public IReadOnlyList<IObserver<TransactionContext>> GetObservers() => _observers;
+    public IEnumerable<IObserver<TransactionContext>> GetObservers() => _subscribers;
 
     public ITransaction AddOperations(IOperation operation, params IOperation[] operations)
     {
@@ -189,11 +189,11 @@ public sealed class Transaction :
         
         public void Retry(TransactionRetry retry = TransactionRetry.None) => TransactionRetry = retry;
 
-        public void Subscribe(IObserver<TransactionContext> observer, params IObserver<TransactionContext>[] observers)
+        public void Subscribe(IObserver<TransactionContext> subscriber, params IObserver<TransactionContext>[] subscribers)
         {
-            _subscribers.Add(observer);
-            for (int i = 0; i < observers.Length; i++)
-                _subscribers.Add(observers[i]);
+            _subscribers.Add(subscriber);
+            for (int i = 0; i < subscribers.Length; i++)
+                _subscribers.Add(subscribers[i]);
         }
     }
 }

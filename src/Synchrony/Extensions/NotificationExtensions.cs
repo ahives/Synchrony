@@ -2,8 +2,8 @@ namespace Synchrony.Extensions;
 
 public static class NotificationExtensions
 {
-    public static void SendToSubscribers(this IReadOnlyList<IObserver<TransactionContext>> observers, TransactionContext context) =>
-        observers.ForEach(observer =>
+    public static void SendToSubscribers(this IEnumerable<IObserver<TransactionContext>> subscribers, TransactionContext context) =>
+        subscribers.ForEach(subscriber =>
         {
             switch (context.State)
             {
@@ -11,11 +11,11 @@ public static class NotificationExtensions
                 case TransactionStates.Pending:
                 case TransactionStates.Completed:
                 case TransactionStates.Compensated:
-                    observer.OnNext(context);
+                    subscriber.OnNext(context);
                     break;
                 case TransactionStates.Failed:
                 default:
-                    observer.OnError(new TransactionPersistenceException());
+                    subscriber.OnError(new TransactionPersistenceException());
                     break;
             }
         });

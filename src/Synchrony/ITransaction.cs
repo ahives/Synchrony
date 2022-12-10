@@ -14,5 +14,5 @@ public interface ITransaction
 
     Guid GetTransactionId();
 
-    IReadOnlyList<IObserver<TransactionContext>> GetObservers();
+    IEnumerable<IObserver<TransactionContext>> GetObservers();
 }

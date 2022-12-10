@@ -12,8 +12,8 @@ internal static class ForEachExtensions
 
         for (int i = 0; i < memory.Length; i++)
         {
-            IObserver<TransactionContext> item = Unsafe.Add(ref ptr, i);
-            action(item);
+            var subscriber = Unsafe.Add(ref ptr, i);
+            action(subscriber);
         }
     }
 }

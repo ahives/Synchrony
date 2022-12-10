@@ -31,7 +31,7 @@ public class CompensatedOperationActivity :
     {
         _cache
             .Get(context.Message.TransactionId)
-            .GetObservers()
+            .GetSubscribers()
             .SendToSubscribers(
                 new()
                 {
@@ -45,7 +45,8 @@ public class CompensatedOperationActivity :
         await next.Execute(context).ConfigureAwait(false);
     }
 
-    public Task Faulted<TException>(BehaviorExceptionContext<OperationState, RequestCompensation, TException> context, IBehavior<OperationState, RequestCompensation> next) where TException : Exception
+    public Task Faulted<TException>(BehaviorExceptionContext<OperationState, RequestCompensation, TException> context,
+        IBehavior<OperationState, RequestCompensation> next) where TException : Exception
     {
         throw new NotImplementedException();
     }

@@ -33,7 +33,7 @@ public class ExecuteOperationActivity :
         {
             _cache
                 .Get(context.Message.TransactionId)
-                .GetObservers()
+                .GetSubscribers()
                 .SendToSubscribers(
                     new()
                     {

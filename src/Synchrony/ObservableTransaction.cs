@@ -1,48 +1,57 @@
 namespace Synchrony;
 
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+
 public abstract class ObservableTransaction :
     IObservable<TransactionContext>
 {
-    protected readonly List<IObserver<TransactionContext>> _observers;
+    protected readonly List<IObserver<TransactionContext>> _subscribers;
 
     protected ObservableTransaction()
     {
-        _observers = new List<IObserver<TransactionContext>>();
+        _subscribers = new List<IObserver<TransactionContext>>();
     }
 
     public IDisposable Subscribe(IObserver<TransactionContext> observer)
     {
-        if (!_observers.Contains(observer))
-            _observers.Add(observer);
+        if (!_subscribers.Contains(observer))
+            _subscribers.Add(observer);
 
-        return new UnSubscriber<TransactionContext>(_observers, observer);
+        return new UnSubscriber<TransactionContext>(_subscribers, observer);
     }
 
     protected virtual void StopSendingNotifications()
     {
-        foreach (var observer in _observers)
-            observer.OnCompleted();
+        Span<IObserver<TransactionContext>> memory = CollectionsMarshal.AsSpan(_subscribers);
+        ref var ptr = ref MemoryMarshal.GetReference(memory);
 
-        _observers.Clear();
+        for (int i = 0; i < memory.Length; i++)
+        {
+            var subscriber = Unsafe.Add(ref ptr, i);
+            subscriber.OnCompleted();
+        }
+
+        _subscribers.Clear();
     }
 
     
     class UnSubscriber<T> :
         IDisposable
     {
-        private readonly List<IObserver<T>> _observers;
-        private readonly IObserver<T> _observer;
+        private readonly List<IObserver<T>> _subscribers;
+        private readonly IObserver<T> _subscriber;
 
-        public UnSubscriber(List<IObserver<T>> observers, IObserver<T> observer)
+        public UnSubscriber(List<IObserver<T>> subscribers, IObserver<T> subscriber)
         {
-            _observers = observers;
-            _observer = observer;
+            _subscribers = subscribers;
+            _subscriber = subscriber;
         }
 
         public void Dispose()
         {
-            if (_observers.Contains(_observer))
-                _observers.Remove(_observer);
+            if (_subscribers.Contains(_subscriber))
+                _subscribers.Remove(_subscriber);
         }
     }
 }

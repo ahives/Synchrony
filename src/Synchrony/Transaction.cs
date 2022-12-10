@@ -62,7 +62,7 @@ public sealed class Transaction :
         return _transactionId;
     }
 
-    public IEnumerable<IObserver<TransactionContext>> GetObservers() => _subscribers;
+    public IEnumerable<IObserver<TransactionContext>> GetSubscribers() => _subscribers;
 
     public ITransaction AddOperations(IOperation operation, params IOperation[] operations)
     {

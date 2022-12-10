@@ -31,7 +31,7 @@ public class CompleteOperationActivity :
     {
         _cache
             .Get(context.Message.TransactionId)
-            .GetObservers()
+            .GetSubscribers()
             .SendToSubscribers(
                 new()
                 {
@@ -45,7 +45,8 @@ public class CompleteOperationActivity :
         await next.Execute(context).ConfigureAwait(false);
     }
 
-    public Task Faulted<TException>(BehaviorExceptionContext<OperationState, OperationCompleted, TException> context, IBehavior<OperationState, OperationCompleted> next) where TException : Exception
+    public Task Faulted<TException>(BehaviorExceptionContext<OperationState, OperationCompleted, TException> context,
+        IBehavior<OperationState, OperationCompleted> next) where TException : Exception
     {
         throw new NotImplementedException();
     }

@@ -36,22 +36,22 @@ public abstract class Operation<TOperation> :
 
 public static class Operation
 {
-    public static IOperation Create<T>()
+    public static IOperation Create<T>(params object[] args)
         where T : class, IOperation
     {
         if (typeof(T).IsAssignableTo(typeof(IOperation)))
-            return CreateInstance(typeof(T));
+            return CreateInstance(typeof(T), args);
 
         return OperationsCache.Empty;
     }
 
-    static IOperation CreateInstance(Type type)
+    static IOperation CreateInstance(Type type, object[] args)
     {
         try
         {
-            return Activator.CreateInstance(type) as IOperation ?? OperationsCache.Empty;
+            return Activator.CreateInstance(type, args) as IOperation ?? OperationsCache.Empty;
         }
-        catch (Exception e)
+        catch
         {
             return OperationsCache.Empty;
         }

@@ -1,11 +1,8 @@
-using System.Diagnostics;
-using MassTransit;
-using Microsoft.Extensions.Configuration;
-using Synchrony.StateMachines;
-using Synchrony.StateMachines.Sagas;
-
 namespace SynchronyTests;
 
+using MassTransit;
+using Synchrony.StateMachines;
+using Synchrony.StateMachines.Sagas;
 using Synchrony;
 using Synchrony.Persistence;
 using Synchrony.Testing;
@@ -40,7 +37,7 @@ public class Tests
             //     x.UseNpgsql(configuration.GetConnectionString("")))
             .BuildServiceProvider();
     }
-    
+
     [SetUp]
     public void Setup()
     {
@@ -50,31 +47,36 @@ public class Tests
     public async Task Test1()
     {
         await _services.GetService<ITransaction>()
-            ?.Configure(x =>
-            {
-                x.Subscribe(Observer.Create<MyObserver>());
-            })
+            ?.Configure(x => { x.Subscribe(Subscriber.Create<MyObserver>()); })
             .AddOperations(
-                Operation.Create<Operation1>(),
+                Operation.Create<Operation1>(new TestDependency()),
                 Operation.Create<Operation2>(),
                 Operation.Create<Operation3>())
             .Execute()!;
-        
+
         Assert.Pass();
     }
 
     class Operation1 :
         Operation<Operation1>
     {
+        private readonly ITestDependency _dependency;
+
+        public Operation1(ITestDependency dependency)
+        {
+            _dependency = dependency;
+        }
+
         public override async Task<bool> Execute()
         {
+            _dependency.DoSomething();
             return await Task.FromResult(true);
         }
 
         public override async Task<bool> Compensate()
         {
             Console.WriteLine("Something went wrong in Operation 1");
-            
+
             return await Task.FromResult(true);
         }
     }
@@ -90,7 +92,7 @@ public class Tests
         public override async Task<bool> Compensate()
         {
             Console.WriteLine("Something went wrong in Operation 2");
-            
+
             return await Task.FromResult(true);
         }
     }
@@ -105,7 +107,7 @@ public class Tests
     }
 
     class MyObserver :
-        IObserver<TransactionContext>
+        IObserver<Synchrony.TransactionContext>
     {
         public void OnCompleted()
         {
@@ -116,9 +118,24 @@ public class Tests
         {
         }
 
-        public void OnNext(TransactionContext value)
+        public void OnNext(Synchrony.TransactionContext value)
         {
-            Console.WriteLine($"Transaction Observer: Transaction {value.OperationId} is currently in state {value.State}");
+            Console.WriteLine(
+                $"Transaction Observer: Transaction {value.OperationId} is currently in state {value.State}");
+        }
+    }
+
+    interface ITestDependency
+    {
+        void DoSomething();
+    }
+
+    class TestDependency :
+        ITestDependency
+    {
+        public void DoSomething()
+        {
+            Console.WriteLine("Some dependency");
         }
     }
 }

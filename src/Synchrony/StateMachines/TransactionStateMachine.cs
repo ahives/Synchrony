@@ -1,6 +1,7 @@
 namespace Synchrony.StateMachines;
 
 using MassTransit;
+using Activities;
 using Events;
 using Sagas;
 
@@ -26,21 +27,19 @@ public class TransactionStateMachine :
 
         Initially(
             When(StartTransactionRequest)
-                .TransitionTo(Pending));
+                .Activity(x => x.OfType<StartTransactionActivity>()));
 
         During(Pending,
             When(TransactionCompleted)
-                .Then(x => Console.WriteLine($"Transaction Id {x.CorrelationId} completed"))
-                .TransitionTo(Completed),
+                .Activity(x => x.OfType<TransactionCompletedActivity>()),
             When(OperationFailed)
-                .Then(x => Console.WriteLine($"Transaction Id {x.CorrelationId} failed"))
-                .TransitionTo(Failed));
+                .Activity(x => x.OfType<TransactionOperationFailedActivity>()));
         // When(TransactionFailed)
         //     .TransitionTo(Failed));
 
         During(Failed,
             When(CompensationRequested)
-                .TransitionTo(Compensated));
+                .Activity(x => x.OfType<CompensationRequestedActivity>()));
 
         During(Completed,
             Ignore(StartTransactionRequest),

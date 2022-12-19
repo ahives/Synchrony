@@ -14,7 +14,7 @@ public sealed class Transaction :
 {
     private readonly IPersistenceProvider _persistence;
     private readonly IReadOnlyList<OperationEntity> _operationsInDatabase;
-    private readonly Guid _transactionId;
+    private Guid _transactionId;
     private readonly IMediator _mediator;
     private readonly ITransactionCache _cache;
     private readonly ILogger<Transaction> _logger;
@@ -69,6 +69,14 @@ public sealed class Transaction :
         _operations.AddRange(operations.Prepend(operation).ToList());
 
         return this;
+    }
+
+    public async Task Execute(Guid transactionId, CancellationToken cancellationToken = default)
+    {
+        if (transactionId != default)
+            _transactionId = transactionId;
+        
+        await Execute(cancellationToken);
     }
 
     public async Task Execute(CancellationToken cancellationToken = default)

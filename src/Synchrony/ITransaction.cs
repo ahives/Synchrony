@@ -5,6 +5,8 @@ using Configuration;
 public interface ITransaction
 {
     Task Execute(CancellationToken cancellationToken = default);
+    
+    Task Execute(Guid transactionId, CancellationToken cancellationToken = default);
 
     ITransaction AddOperations(IOperation operation, params IOperation[] operations);
 

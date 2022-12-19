@@ -7,10 +7,10 @@ internal static class ForEachExtensions
 {
     internal static void ForEach(this IEnumerable<IObserver<TransactionContext>> subscribers, Action<IObserver<TransactionContext>> action)
     {
-        Span<IObserver<TransactionContext>> memory = CollectionsMarshal.AsSpan(subscribers.ToList());
-        ref var ptr = ref MemoryMarshal.GetReference(memory);
+        Span<IObserver<TransactionContext>> frames = CollectionsMarshal.AsSpan(subscribers.ToList());
+        ref var ptr = ref MemoryMarshal.GetReference(frames);
 
-        for (int i = 0; i < memory.Length; i++)
+        for (int i = 0; i < frames.Length; i++)
         {
             var subscriber = Unsafe.Add(ref ptr, i);
             action(subscriber);

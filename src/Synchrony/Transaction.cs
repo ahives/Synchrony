@@ -29,7 +29,6 @@ public sealed class Transaction :
         _logger = logger;
         _config = SynchronyConfigCache.Default;
         _operations = new List<IOperation>();
-        _transactionId = NewId.NextGuid();
     }
 
     public ITransaction Configure(Action<TransactionConfigurator> configurator)
@@ -71,30 +70,30 @@ public sealed class Transaction :
         return this;
     }
 
-    public async Task Execute(Guid transactionId, CancellationToken cancellationToken = default)
-    {
-        if (transactionId != default)
-            _transactionId = transactionId;
-        
-        await Execute(cancellationToken);
-    }
+    public async Task Execute(Guid transactionId, CancellationToken cancellationToken = default) =>
+        await ExecuteTransaction(transactionId, cancellationToken);
 
-    public async Task Execute(CancellationToken cancellationToken = default)
+    public async Task Execute(CancellationToken cancellationToken = default) =>
+        await ExecuteTransaction(NewId.NextGuid(), cancellationToken);
+
+    async Task ExecuteTransaction(Guid transactionId, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         
         if (!_wasConfigured)
             throw new SynchronyConfigurationException();
 
+        _transactionId = transactionId;
+        
         _cache.Store(this);
         
         int start = 0;
                 
-        await _mediator.Publish<StartTransaction>(new() {TransactionId = GetTransactionId()}, cancellationToken);
+        await _mediator.Publish<StartTransaction>(new() {TransactionId = transactionId}, cancellationToken);
 
         (bool succeeded, int index) =
             await _operations.ExecuteFrom(start,
-                async (operation, _) => await TryExecute(operation, _config, cancellationToken));
+                async (operation, _) => await TryExecute(transactionId, operation, _config, cancellationToken));
 
         if (succeeded)
         {
@@ -103,12 +102,12 @@ public sealed class Transaction :
         }
 
         bool compensated = await _operations.CompensateFrom(index,
-                    async operation => await TryCompensate(operation, _config, cancellationToken));
+                    async operation => await TryCompensate(transactionId, operation, _config, cancellationToken));
 
         StopSendingNotifications();
     }
 
-    async Task<bool> TryCompensate(IOperation operation, TransactionConfig config, CancellationToken cancellationToken)
+    async Task<bool> TryCompensate(Guid transactionId, IOperation operation, TransactionConfig config, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Compensating operation {Name}", operation.Metadata.Name);
         // Console.WriteLine($"Compensating operation {operation.SequenceNumber}");
@@ -117,7 +116,7 @@ public sealed class Transaction :
             .Publish<RequestCompensation>(new()
             {
                 OperationId = operation.Metadata.Id,
-                TransactionId = _transactionId
+                TransactionId = transactionId
             }, cancellationToken);
 
         try
@@ -130,7 +129,7 @@ public sealed class Transaction :
         }
     }
 
-    async Task<bool> TryExecute(IOperation operation, TransactionConfig config, CancellationToken cancellationToken)
+    async Task<bool> TryExecute(Guid transactionId, IOperation operation, TransactionConfig config, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Executing operation {Name}", operation.Metadata.Name);
         // Console.WriteLine($"Executing operation {operation.SequenceNumber}");
@@ -139,7 +138,7 @@ public sealed class Transaction :
             .Publish<RequestExecuteOperation>(new()
             {
                 OperationId = operation.Metadata.Id,
-                TransactionId = _transactionId,
+                TransactionId = transactionId,
                 Name = operation.Metadata.Name,
             }, cancellationToken);
 
@@ -152,7 +151,7 @@ public sealed class Transaction :
                 await _mediator.Publish<OperationCompleted>(new()
                 {
                     OperationId = operation.Metadata.Id,
-                    TransactionId = _transactionId
+                    TransactionId = transactionId
                 }, cancellationToken);
             }
             else
@@ -160,7 +159,7 @@ public sealed class Transaction :
                 await _mediator.Publish<OperationFailed>(new()
                 {
                     OperationId = operation.Metadata.Id,
-                    TransactionId = _transactionId,
+                    TransactionId = transactionId,
                 }, cancellationToken);
             }
 
@@ -171,7 +170,7 @@ public sealed class Transaction :
             await _mediator.Publish<OperationFailed>(new()
             {
                 OperationId = operation.Metadata.Id,
-                TransactionId = _transactionId,
+                TransactionId = transactionId,
             }, cancellationToken);
 
             return false;

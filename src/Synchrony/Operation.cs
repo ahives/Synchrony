@@ -8,6 +8,7 @@ public abstract class Operation<TOperation> :
     IOperation
 {
     private readonly ILogger<Operation<TOperation>> _logger;
+    private bool _disposed;
 
     public OperationMetadata Metadata { get; init; }
 
@@ -32,6 +33,29 @@ public abstract class Operation<TOperation> :
         
         return await Task.FromResult(true);
     }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    void Dispose(bool disposing)
+    {
+        if (_disposed)
+            return;
+
+        if (disposing)
+            DisposeManagedResources();
+
+        DisposeUnmanagedResources();
+
+        _disposed = true;
+    }
+
+    protected virtual void DisposeUnmanagedResources(){}
+
+    protected virtual void DisposeManagedResources(){}
 }
 
 public static class Operation

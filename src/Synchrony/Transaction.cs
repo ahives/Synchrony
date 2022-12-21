@@ -127,6 +127,10 @@ public sealed class Transaction :
         {
             return false;
         }
+        finally
+        {
+            operation.Dispose();
+        }
     }
 
     async Task<bool> TryExecute(Guid transactionId, IOperation operation, TransactionConfig config, CancellationToken cancellationToken)
@@ -174,6 +178,10 @@ public sealed class Transaction :
             }, cancellationToken);
 
             return false;
+        }
+        finally
+        {
+            operation.Dispose();
         }
     }
 

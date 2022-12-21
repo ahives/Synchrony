@@ -2,7 +2,8 @@ namespace Synchrony;
 
 using Configuration;
 
-public interface IOperation
+public interface IOperation :
+    IDisposable
 {
     OperationMetadata Metadata { get; init; }
     

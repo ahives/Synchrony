@@ -11,9 +11,6 @@ internal static class ForEachExtensions
         ref var ptr = ref MemoryMarshal.GetReference(frames);
 
         for (int i = 0; i < frames.Length; i++)
-        {
-            var subscriber = Unsafe.Add(ref ptr, i);
-            action(subscriber);
-        }
+            action(Unsafe.Add(ref ptr, i));
     }
 }

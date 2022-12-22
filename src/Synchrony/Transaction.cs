@@ -119,18 +119,7 @@ public sealed class Transaction :
                 TransactionId = transactionId
             }, cancellationToken);
 
-        try
-        {
-            return await operation.Compensate();
-        }
-        catch
-        {
-            return false;
-        }
-        finally
-        {
-            operation.Dispose();
-        }
+        return await operation.TryRun(o => o.Compensate(), () => Task.FromResult(false));
     }
 
     async Task<bool> TryExecute(Guid transactionId, IOperation operation, TransactionConfig config, CancellationToken cancellationToken)
@@ -146,43 +135,42 @@ public sealed class Transaction :
                 Name = operation.Metadata.Name,
             }, cancellationToken);
 
-        try
-        {
-            var succeeded = await operation.Execute();
-
-            if (succeeded)
-            {
-                await _mediator.Publish<OperationCompleted>(new()
-                {
-                    OperationId = operation.Metadata.Id,
-                    TransactionId = transactionId
-                }, cancellationToken);
-            }
-            else
+        return await operation.TryRun(
+            o => ExecuteOperation(o, transactionId, _mediator, cancellationToken),
+            async () =>
             {
                 await _mediator.Publish<OperationFailed>(new()
                 {
                     OperationId = operation.Metadata.Id,
                     TransactionId = transactionId,
                 }, cancellationToken);
-            }
 
-            return succeeded;
-        }
-        catch
+                return false;
+            });
+    }
+
+    async Task<bool> ExecuteOperation(IOperation operation, Guid transactionId, IMediator mediator, CancellationToken cancellationToken)
+    {
+        var succeeded = await operation.Execute();
+
+        if (succeeded)
         {
-            await _mediator.Publish<OperationFailed>(new()
+            await mediator.Publish<OperationCompleted>(new()
+            {
+                OperationId = operation.Metadata.Id,
+                TransactionId = transactionId
+            }, cancellationToken);
+        }
+        else
+        {
+            await mediator.Publish<OperationFailed>(new()
             {
                 OperationId = operation.Metadata.Id,
                 TransactionId = transactionId,
             }, cancellationToken);
+        }
 
-            return false;
-        }
-        finally
-        {
-            operation.Dispose();
-        }
+        return succeeded;
     }
 
 

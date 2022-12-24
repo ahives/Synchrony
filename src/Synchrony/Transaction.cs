@@ -125,7 +125,6 @@ public sealed class Transaction :
     async Task<bool> TryExecute(Guid transactionId, IOperation operation, TransactionConfig config, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Executing operation {Name}", operation.Metadata.Name);
-        // Console.WriteLine($"Executing operation {operation.SequenceNumber}");
 
         await _mediator
             .Publish<RequestExecuteOperation>(new()
@@ -136,7 +135,7 @@ public sealed class Transaction :
             }, cancellationToken);
 
         return await operation.TryRun(
-            o => ExecuteOperation(o, transactionId, _mediator, cancellationToken),
+            async o => await Run(o, transactionId, _mediator, cancellationToken),
             async () =>
             {
                 await _mediator.Publish<OperationFailed>(new()
@@ -145,11 +144,11 @@ public sealed class Transaction :
                     TransactionId = transactionId,
                 }, cancellationToken);
 
-                return false;
+                return await Task.FromResult(false);
             });
     }
 
-    async Task<bool> ExecuteOperation(IOperation operation, Guid transactionId, IMediator mediator, CancellationToken cancellationToken)
+    async Task<bool> Run(IOperation operation, Guid transactionId, IMediator mediator, CancellationToken cancellationToken)
     {
         var succeeded = await operation.Execute();
 

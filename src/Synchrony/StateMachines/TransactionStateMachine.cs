@@ -34,8 +34,6 @@ public class TransactionStateMachine :
                 .Activity(x => x.OfType<TransactionCompletedActivity>()),
             When(OperationFailed)
                 .Activity(x => x.OfType<TransactionOperationFailedActivity>()));
-        // When(TransactionFailed)
-        //     .TransitionTo(Failed));
 
         During(Failed,
             When(CompensationRequested)
@@ -45,12 +43,10 @@ public class TransactionStateMachine :
             Ignore(StartTransactionRequest),
             Ignore(TransactionCompleted),
             Ignore(OperationFailed));
-        // Ignore(TransactionFailed));
 
         During(Compensated,
             When(CompensationRequested)
-                .Then(x => Console.WriteLine($"Operation Id {x.Message.OperationId} failed")));
-            // Ignore(CompensationRequested));
+                .Activity(x => x.OfType<TransactionCompensatedActivity>()));
     }
 
     void ConfigureEvents()

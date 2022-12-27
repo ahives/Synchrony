@@ -17,4 +17,15 @@ public interface ITransaction
     Guid GetTransactionId();
 
     IEnumerable<IObserver<TransactionContext>> GetSubscribers();
+
+    TransactionMetadata Metadata { get; }
+}
+
+public record TransactionMetadata
+{
+    public Guid Id { get; init; }
+    
+    public string Hash { get; init; }
+
+    public DateTimeOffset Timestamp => DateTimeOffset.UtcNow;
 }

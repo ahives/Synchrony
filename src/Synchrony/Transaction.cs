@@ -1,3 +1,5 @@
+using Synchrony.Hashing;
+
 namespace Synchrony;
 
 using Microsoft.Extensions.Logging;
@@ -21,6 +23,8 @@ public sealed class Transaction :
     private readonly List<IOperation> _operations;
     private TransactionConfig _config;
     private bool _wasConfigured;
+
+    public TransactionMetadata Metadata { get; set; }
 
     public Transaction(IMediator mediator, ITransactionCache cache, ILogger<Transaction> logger)
     {
@@ -53,6 +57,8 @@ public sealed class Transaction :
 
     public ITransaction Configure()
     {
+        _wasConfigured = true;
+        
         return this;
     }
 
@@ -84,6 +90,12 @@ public sealed class Transaction :
             throw new SynchronyConfigurationException();
 
         _transactionId = transactionId;
+
+        Metadata = new TransactionMetadata
+        {
+            Id = transactionId,
+            Hash = _operations.ComputeHash(Hash.SHA512Algorithm)
+        };
         
         _cache.Store(this);
         
@@ -110,7 +122,6 @@ public sealed class Transaction :
     async Task<bool> TryCompensate(Guid transactionId, IOperation operation, TransactionConfig config, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Compensating operation {Name}", operation.Metadata.Name);
-        // Console.WriteLine($"Compensating operation {operation.SequenceNumber}");
 
         await _mediator
             .Publish<RequestCompensation>(new()
@@ -169,7 +180,7 @@ public sealed class Transaction :
             }, cancellationToken);
         }
 
-        return succeeded;
+        return await Task.FromResult(succeeded);
     }
 
 

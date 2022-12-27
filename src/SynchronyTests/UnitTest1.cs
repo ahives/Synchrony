@@ -57,6 +57,22 @@ public class Tests
         Assert.Pass();
     }
 
+    [Test]
+    public async Task Test2()
+    {
+        ITransaction transaction = _services.GetService<ITransaction>();
+        await transaction
+            ?.Configure(x => { x.Subscribe(Subscriber.Create<MyObserver>()); })
+            .AddOperations(
+                Operation.Create<Operation1>(new TestDependency()),
+                Operation.Create<Operation2>(),
+                Operation.Create<Operation3>())
+            .Execute()!;
+
+        Console.WriteLine(transaction.Metadata.Hash);
+        Assert.Pass();
+    }
+
     class Operation1 :
         Operation<Operation1>
     {
